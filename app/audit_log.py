@@ -45,6 +45,7 @@ class AuditEvent:
             "digest": self.digest,
             "message": self.message,
             "related_id": self.related_id,
+            "summary": self.display_summary(),
         }
 
     @classmethod
@@ -273,11 +274,12 @@ def audit_event_from_import_job(job: "ImportJob") -> AuditEvent:
     )
 
 
-def list_registry_activity(
+_ACTIVE_STATUSES = frozenset({"running", "queued", "pending"})
+
+
+def merge_all_registry_activity(
     audit: RegistryAuditStore,
     import_jobs_dir: Path,
-    *,
-    limit: int = 50,
 ) -> list[AuditEvent]:
     """Merge audit files with legacy import jobs not yet mirrored to audit storage."""
     from app.importer import ImportJobStore
@@ -289,4 +291,62 @@ def list_registry_activity(
         if job.id in replicate_ids:
             continue
         events.append(audit_event_from_import_job(job))
-    return sorted(events, key=lambda e: e.created_at, reverse=True)[:limit]
+    return sorted(events, key=lambda e: e.created_at, reverse=True)
+
+
+def _event_matches_query(event: AuditEvent, query: str) -> bool:
+    q = query.strip().lower()
+    if not q:
+        return True
+    parts = [
+        event.repository or "",
+        event.tag or "",
+        event.source or "",
+        event.old_repository or "",
+        event.message or "",
+        event.summary if hasattr(event, "summary") else event.display_summary(),
+        event.action,
+        event.status,
+    ]
+    haystack = " ".join(parts).lower()
+    return q in haystack
+
+
+def query_registry_activity(
+    audit: RegistryAuditStore,
+    import_jobs_dir: Path,
+    *,
+    action: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    offset: int = 0,
+    limit: int = 40,
+) -> tuple[list[AuditEvent], int, bool]:
+    events = merge_all_registry_activity(audit, import_jobs_dir)
+    if action:
+        events = [e for e in events if e.action == action]
+    if status:
+        if status == "active":
+            events = [e for e in events if e.status in _ACTIVE_STATUSES]
+        else:
+            events = [e for e in events if e.status == status]
+    if q:
+        events = [e for e in events if _event_matches_query(e, q)]
+    total = len(events)
+    offset = max(offset, 0)
+    limit = min(max(limit, 1), 200)
+    page = events[offset : offset + limit]
+    has_more = offset + len(page) < total
+    return page, total, has_more
+
+
+def list_registry_activity(
+    audit: RegistryAuditStore,
+    import_jobs_dir: Path,
+    *,
+    limit: int = 50,
+) -> list[AuditEvent]:
+    page, _, _ = query_registry_activity(
+        audit, import_jobs_dir, offset=0, limit=limit
+    )
+    return page

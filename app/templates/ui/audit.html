@@ -1,13 +1,221 @@
 {% extends "ui/layout.html" %}
-{% from "ui/_activity.html" import activity_table %}
 {% block title %}Registry audit — CAI Private Registry{% endblock %}
+{% block extra_head %}
+<style>
+  .audit-toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+    margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .audit-filter { flex: 1; min-width: 140px; max-width: 220px; }
+  .audit-filter-wide { flex: 2; min-width: 200px; max-width: 360px; }
+  .audit-filter label {
+    display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .audit-filter select,
+  .audit-filter input[type=text] {
+    width: 100%; padding: 8px 10px; border: 1px solid #cfd5df; border-radius: 8px; font-size: 14px;
+  }
+  .audit-meta { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
+  .audit-scroll-status { text-align: center; padding: 16px; font-size: 13px; color: var(--text-secondary); }
+  .audit-scroll-status.error { color: #b42318; }
+  .audit-time { font-size: 12px; color: #8b95a5; white-space: nowrap; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="card">
   <p class="hint" style="margin:0 0 16px;">
-    Change history for this registry: push, container pull (by tag, not individual API GETs),
-    replicate, rename, and repository create/delete. Newest events first.
-    Automation can use <code>GET /api/v1/audit/events</code> when <code>APP_API_KEY</code> is set.
+    Push, container pull, replicate, rename, and repository admin changes. Scroll to load more.
   </p>
-  {{ activity_table(activity, "No audit events recorded yet.") }}
+
+  <div class="audit-toolbar" role="search" aria-label="Filter audit log">
+    <div class="audit-filter">
+      <label for="filterAction">Action</label>
+      <select id="filterAction">
+        <option value="">All actions</option>
+        <option value="push">Push</option>
+        <option value="pull">Pull</option>
+        <option value="replicate">Replicate</option>
+        <option value="rename">Rename</option>
+        <option value="repo_create">Repo create</option>
+        <option value="repo_delete">Repo delete</option>
+      </select>
+    </div>
+    <div class="audit-filter">
+      <label for="filterStatus">Status</label>
+      <select id="filterStatus">
+        <option value="">All statuses</option>
+        <option value="succeeded">Succeeded</option>
+        <option value="failed">Failed</option>
+        <option value="active">In progress</option>
+      </select>
+    </div>
+    <div class="audit-filter audit-filter-wide">
+      <label for="filterQuery">Search</label>
+      <input id="filterQuery" type="text" placeholder="Repository, tag, source, message…" autocomplete="off" />
+    </div>
+  </div>
+
+  <p class="audit-meta" id="auditMeta" aria-live="polite"></p>
+
+  <table class="activity-table" id="auditTable">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Action</th>
+        <th>Status</th>
+        <th>Detail</th>
+        <th>Message</th>
+      </tr>
+    </thead>
+    <tbody id="auditBody"></tbody>
+  </table>
+  <p id="auditEmpty" class="hint" style="display:none;margin:0;">No events match these filters.</p>
+  <div id="auditScrollSentinel" class="audit-scroll-status">Loading…</div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const PAGE_SIZE = 40;
+  const filterAction = document.getElementById("filterAction");
+  const filterStatus = document.getElementById("filterStatus");
+  const filterQuery = document.getElementById("filterQuery");
+  const auditBody = document.getElementById("auditBody");
+  const auditMeta = document.getElementById("auditMeta");
+  const auditEmpty = document.getElementById("auditEmpty");
+  const auditTable = document.getElementById("auditTable");
+  const sentinel = document.getElementById("auditScrollSentinel");
+
+  let offset = 0;
+  let hasMore = true;
+  let loading = false;
+  let total = 0;
+  let queryDebounce = null;
+
+  function formatWhen(iso) {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    } catch {
+      return iso;
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function truncate(s, n) {
+    if (!s) return "—";
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  }
+
+  function actionLabel(action) {
+    return escapeHtml(String(action).replace(/_/g, " "));
+  }
+
+  function rowHtml(event) {
+    const msg = truncate(event.message || "", 120);
+    return `<tr>
+      <td class="audit-time">${escapeHtml(formatWhen(event.finished_at || event.created_at))}</td>
+      <td><span class="audit-action audit-action-${escapeHtml(event.action)}">${actionLabel(event.action)}</span></td>
+      <td class="status ${escapeHtml(event.status)}">${escapeHtml(event.status)}</td>
+      <td><code>${escapeHtml(event.summary || "")}</code></td>
+      <td class="hint">${escapeHtml(msg)}</td>
+    </tr>`;
+  }
+
+  function filterParams() {
+    const params = new URLSearchParams();
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(offset));
+    if (filterAction.value) params.set("action", filterAction.value);
+    if (filterStatus.value) params.set("status", filterStatus.value);
+    const q = filterQuery.value.trim();
+    if (q) params.set("q", q);
+    return params;
+  }
+
+  function setSentinel(text, isError) {
+    sentinel.textContent = text;
+    sentinel.classList.toggle("error", !!isError);
+  }
+
+  async function loadPage(reset) {
+    if (loading) return;
+    if (!reset && !hasMore) return;
+    loading = true;
+    if (reset) {
+      offset = 0;
+      hasMore = true;
+      auditBody.innerHTML = "";
+      setSentinel("Loading…", false);
+    } else {
+      setSentinel("Loading more…", false);
+    }
+    try {
+      const res = await fetch(`/ui/audit/events?${filterParams()}`);
+      if (!res.ok) throw new Error("Failed to load audit events");
+      const data = await res.json();
+      total = data.total;
+      hasMore = data.has_more;
+      if (reset && data.events.length === 0) {
+        auditTable.style.display = "none";
+        auditEmpty.style.display = "block";
+        auditMeta.textContent = "0 events";
+      } else {
+        auditTable.style.display = "";
+        auditEmpty.style.display = "none";
+        for (const event of data.events) {
+          auditBody.insertAdjacentHTML("beforeend", rowHtml(event));
+        }
+        const shown = auditBody.querySelectorAll("tr").length;
+        auditMeta.textContent = hasMore
+          ? `Showing ${shown} of ${total} events`
+          : `${total} event${total === 1 ? "" : "s"}`;
+      }
+      offset += data.events.length;
+      if (!hasMore) {
+        setSentinel(total === 0 ? "" : "End of log", false);
+        if (total === 0) sentinel.textContent = "";
+      } else {
+        setSentinel("", false);
+      }
+    } catch (err) {
+      setSentinel(err.message || String(err), true);
+    } finally {
+      loading = false;
+    }
+  }
+
+  function resetAndLoad() {
+    loadPage(true);
+  }
+
+  filterAction.addEventListener("change", resetAndLoad);
+  filterStatus.addEventListener("change", resetAndLoad);
+  filterQuery.addEventListener("input", () => {
+    clearTimeout(queryDebounce);
+    queryDebounce = setTimeout(resetAndLoad, 350);
+  });
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting) && hasMore && !loading) {
+        loadPage(false);
+      }
+    },
+    { root: null, rootMargin: "120px", threshold: 0 }
+  );
+  observer.observe(sentinel);
+
+  resetAndLoad();
+})();
+</script>
 {% endblock %}

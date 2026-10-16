@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from app.audit_log import RegistryAuditStore, list_registry_activity
+from app.audit_log import RegistryAuditStore, query_registry_activity
 from app.auth import require_admin_api_key, require_local_registry_auth
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
@@ -274,10 +274,28 @@ def list_audit_events(
     settings: Annotated[Settings, Depends(get_settings)],
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_admin_api_key),
-    limit: int = 100,
+    action: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    offset: int = 0,
+    limit: int = 40,
 ) -> dict:
-    events = list_registry_activity(audit, settings.import_jobs_dir, limit=min(limit, 500))
-    return {"events": [e.to_dict() for e in events]}
+    page, total, has_more = query_registry_activity(
+        audit,
+        settings.import_jobs_dir,
+        action=action or None,
+        status=status or None,
+        q=(q or "").strip() or None,
+        offset=offset,
+        limit=min(limit, 200),
+    )
+    return {
+        "events": [e.to_dict() for e in page],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": has_more,
+    }
 
 
 @app.get("/api/v1/import/jobs")

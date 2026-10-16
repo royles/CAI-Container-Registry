@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from app.audit_log import RegistryAuditStore, list_registry_activity
+from app.audit_log import RegistryAuditStore, list_registry_activity, query_registry_activity
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
@@ -217,8 +217,48 @@ def manage_ui_audit(
         page_lead="Complete audit trail of registry changes on this application.",
         storage=storage,
         settings=settings,
-        activity=_activity_for_ui(settings, limit=200),
     )
+
+
+@router.get("/ui/audit/events")
+def ui_audit_events(
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    action: str | None = None,
+    status: str | None = None,
+    q: str | None = None,
+    offset: int = 0,
+    limit: int = 40,
+) -> dict:
+    allowed_actions = {
+        "push",
+        "pull",
+        "replicate",
+        "rename",
+        "repo_create",
+        "repo_delete",
+    }
+    if action and action not in allowed_actions:
+        raise HTTPException(status_code=400, detail="Invalid action filter")
+    allowed_status = {"succeeded", "failed", "running", "queued", "pending", "active"}
+    if status and status not in allowed_status:
+        raise HTTPException(status_code=400, detail="Invalid status filter")
+    page, total, has_more = query_registry_activity(
+        audit,
+        settings.import_jobs_dir,
+        action=action or None,
+        status=status or None,
+        q=(q or "").strip() or None,
+        offset=offset,
+        limit=limit,
+    )
+    return {
+        "events": [e.to_dict() for e in page],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": has_more,
+    }
 
 
 @router.get("/ui/repositories", response_class=HTMLResponse)

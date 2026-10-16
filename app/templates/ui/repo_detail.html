@@ -3,6 +3,7 @@
 {% block page_h1 %}<code>{{ repository }}:{{ tag }}</code>{% endblock %}
 {% block page_lead %}Image asset detail · <a href="/ui/browser/repositories/{{ repository }}/tags/{{ tag }}">Open in storage browser</a> · <a href="/ui/repositories">Back to repositories</a>{% endblock %}
 {% block content %}
+<div id="registry-modals-root"></div>
 <div class="card" style="background:#fff8e6;border-color:#f5d98a;">
   Container images are served via the <strong>Registry HTTP API</strong> (<code>/v2/</code>), not as HTML at
   <code>/{{ repository }}:{{ tag }}</code>. Bytes live under <code>{{ data_dir }}/</code>.
@@ -135,6 +136,38 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  window.__registryModalQueue = window.__registryModalQueue || [];
+  window.openRegistryModal = function (kind, repository, tag) {
+    function dispatch() {
+      const ui = window.RegistryRepositoriesUi;
+      if (!ui) return false;
+      if (kind === "deleteTag" && tag) ui.openDeleteTag(repository, tag);
+      return true;
+    }
+    if (!dispatch()) {
+      window.__registryModalQueue.push({ kind, repository, tag });
+      const onReady = () => {
+        dispatch();
+        window.removeEventListener("registry-repositories-ui-ready", onReady);
+      };
+      window.addEventListener("registry-repositories-ui-ready", onReady);
+    }
+  };
+</script>
+<script type="module" src="/static/ui/repositories-modals.js"></script>
+<script>
+  window.registryRepoApiKey = function () {
+    {% if app_api_key_required %}
+    return document.getElementById("runtime_labels_api_key")?.value || "";
+    {% else %}
+    return null;
+    {% endif %}
+  };
+  window.registryRepoPathUrl = function (base, repoName) {
+    return `${base}/${repoName.split("/").map(encodeURIComponent).join("/")}`;
+  };
+  window.registryRepoReload = () => location.assign("/ui/repositories");
+
   document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const text = btn.dataset.copyText || "";
@@ -199,30 +232,8 @@
 
   const deleteTagBtn = document.getElementById("deleteTagBtn");
   if (deleteTagBtn) {
-    deleteTagBtn.addEventListener("click", async () => {
-      const expected = {{ (repository ~ ":" ~ tag)|tojson }};
-      const typed = window.prompt(`Type exactly to delete:\n${expected}`);
-      if (typed !== expected) return;
-      deleteTagBtn.disabled = true;
-      try {
-        const payload = { confirm_ref: expected };
-        {% if app_api_key_required %}
-        payload.app_api_key = document.getElementById("runtime_labels_api_key")?.value || "";
-        {% endif %}
-        const res = await fetch(
-          repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}, "delete"),
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Delete failed");
-        location.assign("/ui/repositories");
-      } catch (err) {
-        const st = document.getElementById("deleteTagStatus");
-        st.style.display = "block";
-        st.classList.add("error");
-        st.textContent = err.message || String(err);
-        deleteTagBtn.disabled = false;
-      }
+    deleteTagBtn.addEventListener("click", () => {
+      window.openRegistryModal("deleteTag", {{ repository|tojson }}, {{ tag|tojson }});
     });
   }
 

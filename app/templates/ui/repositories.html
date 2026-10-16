@@ -118,25 +118,31 @@
   <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, replicate from remote, or push with <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>.</p>
   {% endif %}
 </div>
-<dialog id="unlock-repo-dialog" class="registry-dialog" aria-labelledby="unlock-repo-title">
-  <h2 id="unlock-repo-title">Unlock repository?</h2>
-  <p class="hint" style="margin:0 0 10px;">
-    <code id="unlock-repo-name"></code> is protected. Unlocking allows administrators to:
-  </p>
-  <ul class="hint" style="margin:0 0 14px;padding-left:1.2rem;line-height:1.5;">
-    <li>Delete the repository and all of its tags</li>
-    <li>Rename the repository (updates metadata and image references)</li>
-    <li>Delete individual tags inside the repository</li>
-  </ul>
-  <p class="hint" style="margin:0;">Push, pull, and replicate are not blocked. Re-lock anytime from this page.</p>
-  <p id="unlock-repo-error" class="hint" style="display:none;color:#b42318;margin:10px 0 0;" role="alert"></p>
-  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
-    <button type="button" class="registry-modal-btn secondary" id="unlock-repo-cancel">Keep locked</button>
-    <button type="button" class="registry-modal-btn primary" id="unlock-repo-confirm">Unlock repository</button>
-  </div>
-</dialog>
 {% endblock %}
 {% block scripts %}
+<script>
+  window.__registryModalQueue = window.__registryModalQueue || [];
+  window.openRegistryModal = function (kind, repository, tag) {
+    function dispatch() {
+      const ui = window.RegistryRepositoriesUi;
+      if (!ui) return false;
+      if (kind === "delete") ui.openDeleteRepository(repository);
+      else if (kind === "unlock") ui.openUnlockRepository(repository);
+      else if (kind === "deleteTag" && tag) ui.openDeleteTag(repository, tag);
+      else if (kind === "rename") ui.openRenameRepository(repository);
+      else if (kind === "gc") ui.openGarbageCollection();
+      return true;
+    }
+    if (!dispatch()) {
+      window.__registryModalQueue.push({ kind, repository, tag });
+      const onReady = () => {
+        dispatch();
+        window.removeEventListener("registry-repositories-ui-ready", onReady);
+      };
+      window.addEventListener("registry-repositories-ui-ready", onReady);
+    }
+  };
+</script>
 <script type="module" src="/static/ui/repositories-modals.js"></script>
 <script>
   document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
@@ -168,67 +174,14 @@
     el.classList.toggle("error", !!isError);
   }
   window.registryRepoShowStatus = showRepoStatus;
-
-  function apiErrorDetail(data) {
-    if (!data || data.detail == null) return "Request failed";
-    if (typeof data.detail === "string") return data.detail;
-    if (Array.isArray(data.detail)) {
-      return data.detail.map((x) => x.msg || JSON.stringify(x)).join("; ");
-    }
-    return String(data.detail);
-  }
-
-  const unlockDialog = document.getElementById("unlock-repo-dialog");
-  const unlockRepoNameEl = document.getElementById("unlock-repo-name");
-  const unlockErrorEl = document.getElementById("unlock-repo-error");
-  let unlockTargetRepo = null;
-
-  function openUnlockRepositoryDialog(name) {
-    unlockTargetRepo = name;
-    if (unlockRepoNameEl) unlockRepoNameEl.textContent = name;
-    if (unlockErrorEl) {
-      unlockErrorEl.style.display = "none";
-      unlockErrorEl.textContent = "";
-    }
-    if (unlockDialog && typeof unlockDialog.showModal === "function") {
-      unlockDialog.showModal();
-      return;
-    }
-    if (window.RegistryRepositoriesUi?.openUnlockRepository) {
-      window.RegistryRepositoriesUi.openUnlockRepository(name);
-    }
-  }
-
-  document.getElementById("unlock-repo-cancel")?.addEventListener("click", () => {
-    unlockDialog?.close();
-    unlockTargetRepo = null;
-  });
-
-  document.getElementById("unlock-repo-confirm")?.addEventListener("click", async () => {
-    const name = unlockTargetRepo;
-    if (!name) return;
-    const confirmBtn = document.getElementById("unlock-repo-confirm");
-    if (confirmBtn) confirmBtn.disabled = true;
-    try {
-      const res = await fetch(`${window.registryRepoPathUrl("/ui/repositories", name)}/unlock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ app_api_key: repoApiKey() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(apiErrorDetail(data));
-      unlockDialog?.close();
-      location.assign("/ui/repositories");
-    } catch (err) {
-      if (unlockErrorEl) {
-        unlockErrorEl.style.display = "block";
-        unlockErrorEl.textContent = err.message || String(err);
-      } else {
-        showRepoStatus(err.message || String(err), true);
-      }
-      if (confirmBtn) confirmBtn.disabled = false;
-    }
-  });
+  window.registryRepoOnGcComplete = (data) => {
+    const gcStatus = document.getElementById("gcStatus");
+    if (!gcStatus) return;
+    const bytes = data.freed_bytes || 0;
+    const kb = Math.round(bytes / 1024);
+    gcStatus.textContent = `Removed ${data.deleted_blobs || 0} blob(s), freed ~${kb} KB`;
+    gcStatus.style.color = "";
+  };
 
   document.getElementById("createRepoForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -247,24 +200,11 @@
     }
   });
   document.querySelectorAll(".btn-rename").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const row = btn.closest("tr");
       const oldName = row?.dataset.repo;
       if (!oldName || row?.dataset.locked === "true") return;
-      const newName = window.prompt(`Rename repository "${oldName}" to:`, oldName);
-      if (!newName || newName.trim() === oldName) return;
-      try {
-        const res = await fetch(`${window.registryRepoPathUrl("/ui/repositories", oldName)}/rename`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ new_name: newName.trim(), app_api_key: repoApiKey() }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Rename failed");
-        location.assign("/ui/repositories");
-      } catch (err) {
-        showRepoStatus(err.message || String(err), true);
-      }
+      window.openRegistryModal("rename", oldName);
     });
   });
   document.querySelectorAll(".btn-delete").forEach((btn) => {
@@ -272,11 +212,7 @@
       const row = btn.closest("tr");
       const name = row?.dataset.repo;
       if (!name || row?.dataset.locked === "true") return;
-      if (window.RegistryRepositoriesUi?.openDeleteRepository) {
-        window.RegistryRepositoriesUi.openDeleteRepository(name);
-      } else {
-        showRepoStatus("Delete dialog still loading — wait a moment and try again.", true);
-      }
+      window.openRegistryModal("delete", name);
     });
   });
   document.querySelectorAll(".btn-toggle-lock").forEach((btn) => {
@@ -286,7 +222,7 @@
       if (!name) return;
       const locked = row.dataset.locked === "true";
       if (locked) {
-        openUnlockRepositoryDialog(name);
+        window.openRegistryModal("unlock", name);
         return;
       }
       try {
@@ -304,52 +240,31 @@
     });
   });
   document.querySelectorAll(".btn-delete-tag").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const repo = btn.dataset.repo;
       const tag = btn.dataset.tag;
       if (!repo || !tag || btn.disabled) return;
-      const expected = `${repo}:${tag}`;
-      const typed = window.prompt(
-        `Delete tag and stop serving ${expected}?\n\nType exactly: ${expected}`
-      );
-      if (typed !== expected) {
-        if (typed !== null) showRepoStatus("Delete cancelled — confirmation did not match.", true);
-        return;
-      }
-      try {
-        const res = await fetch(
-          `${window.registryRepoPathUrl("/ui/repositories", repo)}/tags/${encodeURIComponent(tag)}/delete`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ confirm_ref: expected, app_api_key: repoApiKey() }),
-          }
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Delete failed");
-        location.assign("/ui/repositories");
-      } catch (err) {
-        showRepoStatus(err.message || String(err), true);
-      }
+      window.openRegistryModal("deleteTag", repo, tag);
     });
   });
   async function runGc(dryRun) {
     const gcStatus = document.getElementById("gcStatus");
-    if (!dryRun && !window.confirm("Permanently delete unreferenced blob files? This cannot be undone.")) return;
-    gcStatus.textContent = dryRun ? "Scanning…" : "Deleting orphan blobs…";
+    if (!dryRun) {
+      window.openRegistryModal("gc", "");
+      return;
+    }
+    gcStatus.textContent = "Scanning…";
     try {
       const res = await fetch("/ui/gc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dry_run: dryRun, app_api_key: repoApiKey() }),
+        body: JSON.stringify({ dry_run: true, app_api_key: repoApiKey() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "GC failed");
-      const bytes = dryRun ? data.would_free_bytes : data.freed_bytes;
-      const kb = Math.round((bytes || 0) / 1024);
-      gcStatus.textContent = dryRun
-        ? `Preview: ${data.orphan_blobs} orphan blob(s), ~${kb} KB reclaimable`
-        : `Removed ${data.deleted_blobs} blob(s), freed ~${kb} KB`;
+      const kb = Math.round((data.would_free_bytes || 0) / 1024);
+      gcStatus.textContent = `Preview: ${data.orphan_blobs} orphan blob(s), ~${kb} KB reclaimable`;
+      gcStatus.style.color = "";
     } catch (err) {
       gcStatus.textContent = err.message || String(err);
       gcStatus.style.color = "#b42318";

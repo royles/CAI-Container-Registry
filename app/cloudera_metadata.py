@@ -37,14 +37,22 @@ RUNTIME_LABEL_FIELDS: dict[str, tuple[str, str]] = {
 }
 
 
+def _runtime_label_value(labels: dict[str, str], field: str) -> tuple[str | None, bool]:
+    """Prefer com.cloudera.ml.runtime.* (matches edit/repair forms); flag legacy mismatch."""
+    legacy_key, cloudera_key = RUNTIME_LABEL_FIELDS[field]
+    legacy = labels.get(legacy_key)
+    cloudera = labels.get(cloudera_key)
+    conflict = bool(legacy and cloudera and legacy != cloudera)
+    value = cloudera or legacy
+    return (value if value else None), conflict
+
+
 def runtime_label_summary(labels: dict[str, str]) -> dict[str, str | None]:
     """Human-facing runtime identity strings from config labels."""
-    edition = labels.get("ML_RUNTIME_EDITION") or labels.get("com.cloudera.ml.runtime.edition")
-    full = labels.get("ML_RUNTIME_FULL_VERSION") or labels.get("com.cloudera.ml.runtime.full-version")
-    short = labels.get("ML_RUNTIME_SHORT_VERSION") or labels.get("com.cloudera.ml.runtime.short-version")
-    maintenance = labels.get("ML_RUNTIME_MAINTENANCE_VERSION") or labels.get(
-        "com.cloudera.ml.runtime.maintenance-version"
-    )
+    edition, _ = _runtime_label_value(labels, "edition")
+    full, _ = _runtime_label_value(labels, "full_version")
+    short, short_conflict = _runtime_label_value(labels, "short_version")
+    maintenance, maint_conflict = _runtime_label_value(labels, "maintenance_version")
     display = edition or full or short or maintenance
     return {
         "display": display,
@@ -52,7 +60,49 @@ def runtime_label_summary(labels: dict[str, str]) -> dict[str, str | None]:
         "full_version": full,
         "short_version": short,
         "maintenance_version": maintenance,
+        "label_conflicts": {
+            "short_version": short_conflict,
+            "maintenance_version": maint_conflict,
+            "full_version": _runtime_label_value(labels, "full_version")[1],
+            "edition": _runtime_label_value(labels, "edition")[1],
+        },
     }
+
+
+def catalog_version_prefix(short_version: str, maintenance_version: str) -> str:
+    """Runtime Catalog: full_version must start with short + '.' + maintenance."""
+    return f"{short_version}.{maintenance_version}"
+
+
+def infer_short_version_from_full(full_version: str, maintenance_version: str) -> str | None:
+    """
+    Derive short_version when full is '{short}.{maintenance}' or '{short}.{maintenance}-build'.
+    Handles Cloudera tags like 2023.08.2-b8 with maintenance_version=2.
+    """
+    full = full_version.strip()
+    maint = maintenance_version.strip()
+    if not full or not maint.isdigit():
+        return None
+    suffix = f".{maint}"
+    stem = full.split("-", 1)[0]
+    if stem.endswith(suffix) and len(stem) > len(suffix):
+        return stem[: -len(suffix)]
+    if full.endswith(suffix) and len(full) > len(suffix):
+        return full[: -len(suffix)]
+    return None
+
+
+def catalog_version_triple_ok(
+    short_version: str | None,
+    maintenance_version: str | None,
+    full_version: str | None,
+) -> bool:
+    short = (short_version or "").strip()
+    maint = (maintenance_version or "").strip()
+    full = (full_version or "").strip()
+    if not short or not maint or not full or not maint.isdigit():
+        return False
+    return full.startswith(catalog_version_prefix(short, maint))
 
 
 def _labels_from_config(config: dict[str, Any]) -> dict[str, str]:
@@ -170,28 +220,46 @@ def _version_triple_check(summary: dict[str, str | None]) -> dict[str, Any]:
     short = summary.get("short_version") or ""
     maint = summary.get("maintenance_version") or ""
     full = summary.get("full_version") or ""
+    conflicts = summary.get("label_conflicts") or {}
+    if any(conflicts.values()):
+        return {
+            "ok": False,
+            "message": (
+                "ML_RUNTIME_* and com.cloudera.ml.runtime.* labels disagree on this image. "
+                "Use Repair version labels to sync both (Runtime Catalog reads config labels/Env)."
+            ),
+            "label_conflicts": conflicts,
+        }
     if not short or not maint:
         return {"ok": None, "message": "short_version and maintenance_version not both set"}
     if not maint.isdigit():
         return {
             "ok": False,
-            "message": "maintenance_version must be an integer",
-            "expected_full_prefix": f"{short}.{maint}",
+            "message": "maintenance_version must be an integer (not a build id like b8)",
+            "expected_full_prefix": catalog_version_prefix(short, maint),
         }
-    expected = f"{short}.{maint}"
-    ok = full.startswith(expected) if full else False
-    inferred_short = None
-    if not ok and full.endswith(f".{maint}"):
-        inferred_short = full[: -(len(maint) + 1)]
+    expected = catalog_version_prefix(short, maint)
+    ok = catalog_version_triple_ok(short, maint, full)
+    inferred_short = infer_short_version_from_full(full, maint) if full and maint.isdigit() else None
+    suggested = None
+    if not ok and inferred_short and inferred_short != short:
+        suggested = {
+            "short_version": inferred_short,
+            "maintenance_version": maint,
+            "full_version": full,
+        }
     return {
         "ok": ok,
         "expected_full": expected,
         "expected_full_prefix": expected,
-        "message": "OK" if ok else f"full_version should start with '{expected}'",
-        "catalog_fields": {"short_version": short, "maintenance_version": maint, "full_version": full},
-        "suggested_fix": (
-            {"short_version": inferred_short, "maintenance_version": maint, "full_version": full}
-            if inferred_short and inferred_short != short
-            else None
+        "message": (
+            "OK"
+            if ok
+            else (
+                "The provided full version does not start with the short version concatenated "
+                f"with maintenance version (expected prefix '{expected}')."
+            )
         ),
+        "catalog_fields": {"short_version": short, "maintenance_version": maint, "full_version": full},
+        "suggested_fix": suggested,
     }

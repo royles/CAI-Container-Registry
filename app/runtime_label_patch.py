@@ -5,7 +5,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.cloudera_metadata import RUNTIME_LABEL_FIELDS
+from app.cloudera_metadata import (
+    RUNTIME_LABEL_FIELDS,
+    catalog_version_prefix,
+    catalog_version_triple_ok,
+    infer_short_version_from_full,
+)
 from app.image_refs import sync_version_tag_alias
 from app.local_storage import LocalRegistryStorage
 
@@ -25,16 +30,8 @@ _FIELD_TO_ENV: dict[str, str] = {
 
 
 def canonical_full_version(short_version: str, maintenance_version: str) -> str:
-    """Cloudera pattern: ML_RUNTIME_FULL_VERSION = short + '.' + maintenance (see ML runtimes docs)."""
-    return f"{short_version}.{maintenance_version}"
-
-
-def _infer_short_from_full_and_maintenance(full: str, maintenance: str) -> str | None:
-    """If full is '{short}.{maintenance}', return short (fixes short_version set to full by mistake)."""
-    suffix = f".{maintenance}"
-    if full.endswith(suffix) and len(full) > len(suffix):
-        return full[: -len(suffix)]
-    return None
+    """Minimum full_version prefix: short + '.' + maintenance (Catalog rule)."""
+    return catalog_version_prefix(short_version, maintenance_version)
 
 
 def normalize_runtime_version_fields(fields: dict[str, str]) -> dict[str, str]:
@@ -51,27 +48,31 @@ def normalize_runtime_version_fields(fields: dict[str, str]) -> dict[str, str]:
             "Values like 'b8' belong in short_version, not maintenance_version."
         )
     if not short and full and maint.isdigit():
-        inferred = _infer_short_from_full_and_maintenance(full, maint)
+        inferred = infer_short_version_from_full(full, maint)
         if inferred:
             short = inferred
             fields["short_version"] = short
     if short and maint:
-        expected_full = canonical_full_version(short, maint)
-        if full and not full.startswith(expected_full):
-            inferred_short = _infer_short_from_full_and_maintenance(full, maint)
-            if inferred_short and canonical_full_version(inferred_short, maint) == full:
+        prefix = canonical_full_version(short, maint)
+        if full and not catalog_version_triple_ok(short, maint, full):
+            inferred_short = infer_short_version_from_full(full, maint)
+            if inferred_short and catalog_version_triple_ok(inferred_short, maint, full):
                 short = inferred_short
                 fields["short_version"] = short
-                expected_full = full
+                prefix = canonical_full_version(short, maint)
             else:
+                hint = infer_short_version_from_full(full, maint) or "…"
                 raise ValueError(
-                    f"Runtime Catalog expects full_version to start with '{expected_full}' "
+                    f"Runtime Catalog expects full_version to start with '{prefix}' "
                     f"(short_version + '.' + maintenance_version). "
                     f"Current: short='{short}', maintenance='{maint}', full='{full}'. "
-                    f"Often short_version should be '{_infer_short_from_full_and_maintenance(full, maint) or '…'}' "
-                    f"when full is '{full}' and maintenance is '{maint}'."
+                    f"Try short_version='{hint}' (maintenance stays '{maint}')."
                 )
-        fields["full_version"] = expected_full
+        if not full:
+            fields["full_version"] = prefix
+        elif not catalog_version_triple_ok(short, maint, full):
+            fields["full_version"] = prefix
+        # else keep full (e.g. 2023.08.2-b8) — do not strip build suffixes
     return fields
 
 
@@ -85,9 +86,16 @@ def repair_runtime_version_metadata(
 
     meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
     current = runtime_fields_from_labels(meta.get("all_config_labels") or {})
+    full = (current.get("full_version") or "").strip()
+    maint = (current.get("maintenance_version") or "").strip()
+    if not current.get("short_version") and full and maint.isdigit():
+        inferred = infer_short_version_from_full(full, maint)
+        if inferred:
+            current["short_version"] = inferred
     if not current.get("short_version") or not current.get("maintenance_version"):
         raise ValueError(
-            "Cannot repair: short_version and maintenance_version must be present on the image config."
+            "Cannot repair: need short_version and maintenance_version on the image config "
+            "(or full_version + maintenance_version to infer short)."
         )
     normalized = normalize_runtime_version_fields(dict(current))
     return patch_image_tag_runtime_labels(storage, repo, tag, normalized)

@@ -33,7 +33,7 @@
   <p style="margin:0 0 8px;font-size:1rem;font-weight:600;">{{ rs.display }}</p>
   {% endif %}
   {% if cloudera_meta.version_check and cloudera_meta.version_check.ok == false %}
-  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>Version mismatch:</strong> {{ cloudera_meta.version_check.message }}
+  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>Runtime Catalog validation:</strong> {{ cloudera_meta.version_check.message }}
     {% if cloudera_meta.version_check.expected_full %} Catalog expects <code>full_version</code> = <code>{{ cloudera_meta.version_check.expected_full }}</code>.{% endif %}
     {% if cloudera_meta.version_check.suggested_fix %}
     Try <code>short_version={{ cloudera_meta.version_check.suggested_fix.short_version }}</code>,

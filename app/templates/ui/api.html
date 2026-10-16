@@ -65,6 +65,24 @@
     </div>
   </details>
   <details class="endpoint">
+    <summary>Delete manifest / tag (Registry V2)</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url">DELETE {{ registry_v2_url }}&lt;repository&gt;/manifests/&lt;tag&gt;</code>
+      <p class="endpoint-desc">Requires <code>If-Match: &lt;manifest digest&gt;</code> from <code>HEAD</code>/<code>GET</code> (Distribution spec). Returns <code>202 Accepted</code>.</p>
+      <code class="endpoint-url">DELETE {{ registry_v2_url }}&lt;repository&gt;/tags/&lt;tag&gt;</code>
+      <p class="endpoint-desc">OCI Distribution tag delete — no <code>If-Match</code>. Blobs remain until GC.</p>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Management API — tag delete &amp; GC</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url">DELETE {{ management_api_url }}repositories/&lt;repository&gt;/tags/&lt;tag&gt;</code>
+      <p class="endpoint-desc">Admin <code>X-API-Key</code> when configured.</p>
+      <code class="endpoint-url">POST {{ management_api_url }}gc</code>
+      <p class="endpoint-desc">Body <code>{"dry_run": true}</code> to preview orphan blobs; <code>false</code> to delete.</p>
+    </div>
+  </details>
+  <details class="endpoint">
     <summary>Cloudera Runtime Catalog</summary>
     <div class="endpoint-body">
       <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>

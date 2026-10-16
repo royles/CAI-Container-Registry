@@ -207,11 +207,91 @@ class LocalRegistryStorage:
                     continue
         raise FileNotFoundError(reference)
 
-    def delete_tag(self, repo: str, tag: str) -> None:
+    def tags_for_manifest_digest(self, repo: str, digest: str) -> list[str]:
+        """Tag names currently resolving to this manifest digest."""
         self.validate_repo_name(repo)
-        tag_path = self._tag_current_path(repo, tag)
-        if tag_path.is_file():
-            tag_path.unlink()
+        found: list[str] = []
+        for tag in self.list_tags(repo):
+            try:
+                resolved, _ = self.resolve_tag(repo, tag)
+            except FileNotFoundError:
+                continue
+            if resolved == digest:
+                found.append(tag)
+        return sorted(found)
+
+    def _remove_tag_index_entry(self, repo: str, digest: str, tag: str) -> None:
+        hex_digest = digest.removeprefix("sha256:")
+        index_path = (
+            self._repo_dir(repo)
+            / "_manifests"
+            / "tags"
+            / "index"
+            / "sha256"
+            / hex_digest
+        )
+        if not index_path.is_file():
+            return
+        try:
+            indexed_tag = index_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return
+        if indexed_tag == tag:
+            index_path.unlink()
+
+    def _remove_manifest_revision_link(self, repo: str, digest: str) -> bool:
+        rev = self._manifest_revision_path(repo, digest)
+        if not rev.is_dir():
+            return False
+        shutil.rmtree(rev)
+        return True
+
+    def remove_tag(self, repo: str, tag: str) -> dict:
+        """
+        Delete a tag (OCI Distribution tag delete / manifest delete by tag).
+        Manifest blobs and revision links remain until no tag references the digest.
+        """
+        self.validate_repo_name(repo)
+        digest, _ = self.resolve_tag(repo, tag)
+        tag_dir = self._tag_current_path(repo, tag).parent
+        if tag_dir.is_dir():
+            shutil.rmtree(tag_dir)
+        self._remove_tag_index_entry(repo, digest, tag)
+        remaining = self.tags_for_manifest_digest(repo, digest)
+        removed_revision = False
+        if not remaining:
+            removed_revision = self._remove_manifest_revision_link(repo, digest)
+        return {
+            "repository": repo,
+            "tag": tag,
+            "manifest_digest": digest,
+            "tags_remaining_for_digest": remaining,
+            "manifest_revision_removed": removed_revision,
+        }
+
+    def remove_manifest_digest(self, repo: str, digest: str) -> dict:
+        """Remove all tags and the revision link for a manifest digest in this repository."""
+        self.validate_repo_name(repo)
+        if not digest.startswith("sha256:"):
+            raise ValueError("digest must be sha256:…")
+        removed_tags: list[str] = []
+        for tag in self.tags_for_manifest_digest(repo, digest):
+            tag_dir = self._tag_current_path(repo, tag).parent
+            if tag_dir.is_dir():
+                shutil.rmtree(tag_dir)
+            self._remove_tag_index_entry(repo, digest, tag)
+            removed_tags.append(tag)
+        removed_revision = self._remove_manifest_revision_link(repo, digest)
+        return {
+            "repository": repo,
+            "manifest_digest": digest,
+            "removed_tags": removed_tags,
+            "manifest_revision_removed": removed_revision,
+        }
+
+    def delete_tag(self, repo: str, tag: str) -> None:
+        """Deprecated: use remove_tag()."""
+        self.remove_tag(repo, tag)
 
     def create_repository(self, name: str) -> None:
         """Create an empty repository (ready for docker push or replicate)."""

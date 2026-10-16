@@ -11,6 +11,7 @@ from app.audit_log import RegistryAuditStore
 from app.auth import require_local_registry_auth
 from app.config import Settings, get_settings
 from app.local_storage import LocalRegistryStorage
+from app.registry_delete import delete_manifest_v2
 
 router = APIRouter(prefix="/v2", tags=["registry"])
 
@@ -87,6 +88,55 @@ async def get_manifest(
         return Response(status_code=200, headers=headers)
     audit.record_pull(name, reference, digest)
     return Response(content=data, media_type=media_type, headers=headers)
+
+
+@router.delete("/{name:path}/manifests/{reference}")
+def delete_manifest(
+    name: str,
+    reference: str,
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_local_registry_auth),
+) -> Response:
+    if_match = request.headers.get("If-Match") or request.headers.get("if-match")
+    result = delete_manifest_v2(storage, name, reference, if_match=if_match)
+    tag = reference if not reference.startswith("sha256:") else None
+    audit.record_tag_delete(
+        name,
+        tag=tag,
+        digest=result.get("manifest_digest", ""),
+        message="Manifest deleted via Registry API",
+    )
+    headers = {
+        "Docker-Distribution-Api-Version": "registry/2.0",
+    }
+    return Response(status_code=202, headers=headers)
+
+
+@router.delete("/{name:path}/tags/{tag}")
+def delete_tag(
+    name: str,
+    tag: str,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_local_registry_auth),
+) -> Response:
+    """OCI Distribution tag delete — removes tag; blobs remain until garbage collection."""
+    try:
+        result = storage.remove_tag(name, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="tag unknown") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_tag_delete(
+        name,
+        tag=tag,
+        digest=result.get("manifest_digest", ""),
+        message="Tag deleted via Registry API",
+    )
+    headers = {"Docker-Distribution-Api-Version": "registry/2.0"}
+    return Response(status_code=202, headers=headers)
 
 
 @router.get("/{name:path}/blobs/{digest}")

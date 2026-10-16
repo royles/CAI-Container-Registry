@@ -109,7 +109,7 @@ async def _initiate_upload(
     return Response(status_code=202, headers=headers)
 
 
-@router.api_route("/{filepath:path}", methods=["POST", "PATCH", "PUT"], include_in_schema=True)
+@router.api_route("/{filepath:path}", methods=["POST", "PATCH", "PUT", "DELETE"], include_in_schema=True)
 async def registry_write_dispatch(
     filepath: str,
     request: Request,
@@ -123,6 +123,15 @@ async def registry_write_dispatch(
     method = request.method
     query = parse_qs(str(request.url.query))
     digest = query.get("digest", [None])[0]
+
+    if method == "DELETE":
+        match = _UPLOAD_SESSION.match(path)
+        if not match:
+            raise HTTPException(status_code=404, detail="upload session path not found")
+        upload_id = match.group("upload_id")
+        if uploads.exists(upload_id):
+            uploads.delete(upload_id)
+        return Response(status_code=204, headers=_registry_headers())
 
     if method == "POST":
         match = _UPLOAD_START.match(path)

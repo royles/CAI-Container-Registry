@@ -3,6 +3,21 @@
 {% block content %}
 <div class="card">
   <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog — always <code>{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> (the tag you replicated or pushed). Registry API: <code>{{ registry_v2_url }}</code></p>
+  <div class="card" style="margin-top:14px;background:#f8fafc;border-color:#e2e8f0;">
+    <h3 style="margin:0 0 8px;font-size:0.95rem;">Image lifecycle (OCI best practice)</h3>
+    <ol class="hint" style="margin:0;padding-left:1.2rem;">
+      <li><strong>Create</strong> — empty repository or first <code>docker push</code> / replicate.</li>
+      <li><strong>Update</strong> — push or replicate the same tag again (new manifest digest; old blobs stay until GC).</li>
+      <li><strong>Retire</strong> — delete individual tags (below) or the whole repository.</li>
+      <li><strong>Reclaim space</strong> — run garbage collection to remove unreferenced blob files.</li>
+    </ol>
+    <p class="hint" style="margin:10px 0 0;">Deleting a repository or tag removes metadata only until GC runs. Shared layers remain while any tag still references them.</p>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+      <button type="button" class="btn-inline btn-secondary" id="gcDryRunBtn">Preview garbage collection</button>
+      <button type="button" class="btn-inline btn-danger" id="gcRunBtn">Run garbage collection</button>
+      <span class="hint" id="gcStatus" style="margin:0;"></span>
+    </div>
+  </div>
   {% if app_api_key_required %}
   <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
   <input id="repo_admin_api_key" type="password" autocomplete="off" />
@@ -59,6 +74,8 @@
             <li class="tag-meta-item">
               <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
               <span class="hint"> · <a href="/repos/{{ repo.name }}/tags/{{ t.name }}#runtime-labels">Edit labels</a></span>
+              <button type="button" class="btn-inline btn-danger btn-delete-tag" style="margin-left:6px;font-size:12px;padding:2px 8px;"
+                data-repo="{{ repo.name }}" data-tag="{{ t.name }}">Delete tag</button>
               {% if t.runtime_display %}
               <div class="runtime-meta-line">{{ t.runtime_display }}</div>
               {% if t.runtime_summary.full_version and t.runtime_summary.full_version != t.runtime_display %}
@@ -161,7 +178,9 @@
       const row = btn.closest("tr");
       const name = row?.dataset.repo;
       if (!name) return;
-      if (!window.confirm(`Delete repository "${name}" and all its tags?`)) return;
+      if (!window.confirm(
+        `Delete repository "${name}" and all tag metadata?\n\nBlob files stay on disk until garbage collection.`
+      )) return;
       try {
         const res = await fetch(`${repoPathUrl("/ui/repositories", name)}/delete`, {
           method: "POST",
@@ -176,5 +195,59 @@
       }
     });
   });
+  document.querySelectorAll(".btn-delete-tag").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const repo = btn.dataset.repo;
+      const tag = btn.dataset.tag;
+      if (!repo || !tag) return;
+      const expected = `${repo}:${tag}`;
+      const typed = window.prompt(
+        `Delete tag and stop serving ${expected}?\n\nType exactly: ${expected}`
+      );
+      if (typed !== expected) {
+        if (typed !== null) showRepoStatus("Delete cancelled — confirmation did not match.", true);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `${repoPathUrl("/ui/repositories", repo)}/tags/${encodeURIComponent(tag)}/delete`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confirm_ref: expected, app_api_key: repoApiKey() }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Delete failed");
+        location.assign("/ui/repositories");
+      } catch (err) {
+        showRepoStatus(err.message || String(err), true);
+      }
+    });
+  });
+  async function runGc(dryRun) {
+    const gcStatus = document.getElementById("gcStatus");
+    if (!dryRun && !window.confirm("Permanently delete unreferenced blob files? This cannot be undone.")) return;
+    gcStatus.textContent = dryRun ? "Scanning…" : "Deleting orphan blobs…";
+    try {
+      const res = await fetch("/ui/gc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dry_run: dryRun, app_api_key: repoApiKey() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "GC failed");
+      const bytes = dryRun ? data.would_free_bytes : data.freed_bytes;
+      const kb = Math.round((bytes || 0) / 1024);
+      gcStatus.textContent = dryRun
+        ? `Preview: ${data.orphan_blobs} orphan blob(s), ~${kb} KB reclaimable`
+        : `Removed ${data.deleted_blobs} blob(s), freed ~${kb} KB`;
+    } catch (err) {
+      gcStatus.textContent = err.message || String(err);
+      gcStatus.style.color = "#b42318";
+    }
+  }
+  document.getElementById("gcDryRunBtn")?.addEventListener("click", () => runGc(true));
+  document.getElementById("gcRunBtn")?.addEventListener("click", () => runGc(false));
 </script>
 {% endblock %}

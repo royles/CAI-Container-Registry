@@ -17,6 +17,7 @@ from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
 from app.image_refs import build_client_pull_refs, ensure_version_tag_alias_for_tag, probe_registry_tag
+from app.registry_gc import run_garbage_collection
 from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
@@ -269,6 +270,52 @@ def delete_repository(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     audit.record_repo_delete(name)
     return {"deleted": name}
+
+
+@app.delete("/api/v1/repositories/{name:path}/tags/{tag}")
+def delete_repository_tag(
+    name: str,
+    tag: str,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    """Remove a tag and manifest revision when no tags reference the digest. Blobs remain until GC."""
+    try:
+        result = storage.remove_tag(name, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Tag not found: {name}:{tag}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_tag_delete(
+        name,
+        tag=tag,
+        digest=result.get("manifest_digest", ""),
+        message="Tag deleted via management API",
+    )
+    return result
+
+
+class GarbageCollectionRequest(BaseModel):
+    dry_run: bool = Field(default=True, description="When true, report orphans without deleting")
+
+
+@app.post("/api/v1/gc")
+def garbage_collect_blobs(
+    body: GarbageCollectionRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    """Delete blob files not reachable from any repository manifest (Distribution GC)."""
+    result = run_garbage_collection(storage, dry_run=body.dry_run)
+    summary = (
+        f"{result['orphan_blobs']} orphan blob(s), "
+        f"{'would free' if body.dry_run else 'freed'} "
+        f"{result['would_free_bytes' if body.dry_run else 'freed_bytes']} bytes"
+    )
+    audit.record_gc(dry_run=body.dry_run, summary=summary)
+    return result
 
 
 def _run_import(importer: ImageImporter, job_id: str, body: ImportRequest) -> None:

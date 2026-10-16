@@ -123,6 +123,15 @@
   </table>
   {% endif %}
 </div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:1.05rem;">Retire this version</h2>
+  <p class="hint" style="margin-top:0;">
+    Removes tag <code>{{ repository }}:{{ tag }}</code> from the registry API. Manifest and layer blobs remain until
+    no repository references them, then run <strong>garbage collection</strong> on the Repositories page.
+  </p>
+  <button type="button" class="btn-inline btn-danger" id="deleteTagBtn">Delete tag</button>
+  <div id="deleteTagStatus" class="status-banner"></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -184,6 +193,35 @@
       } catch (err) {
         showRuntimeStatus(err.message || String(err), true);
         repairBtn.disabled = false;
+      }
+    });
+  }
+
+  const deleteTagBtn = document.getElementById("deleteTagBtn");
+  if (deleteTagBtn) {
+    deleteTagBtn.addEventListener("click", async () => {
+      const expected = {{ (repository ~ ":" ~ tag)|tojson }};
+      const typed = window.prompt(`Type exactly to delete:\n${expected}`);
+      if (typed !== expected) return;
+      deleteTagBtn.disabled = true;
+      try {
+        const payload = { confirm_ref: expected };
+        {% if app_api_key_required %}
+        payload.app_api_key = document.getElementById("runtime_labels_api_key")?.value || "";
+        {% endif %}
+        const res = await fetch(
+          repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}, "delete"),
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Delete failed");
+        location.assign("/ui/repositories");
+      } catch (err) {
+        const st = document.getElementById("deleteTagStatus");
+        st.style.display = "block";
+        st.classList.add("error");
+        st.textContent = err.message || String(err);
+        deleteTagBtn.disabled = false;
       }
     });
   }

@@ -7,6 +7,19 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 - Local registry at `/v2/` backed by `REGISTRY_DATA_DIR` (persist on project NFS in CAI)
 - Management UI — separate pages under `/ui/…` (replicate, repositories, storage browser, jobs, API)
 - JSON API for automation (`/api/v1/import`, `/api/v1/repositories`, …)
+- OCI lifecycle: create repository, push/replicate (update tag), delete tag/repository, garbage-collect unreferenced blobs
+
+### Recommended image lifecycle
+
+| Stage | What to do | Notes |
+|-------|------------|--------|
+| **Create** | Create repo in UI or first `docker push` / replicate | Empty repos are valid |
+| **Publish** | `docker push` or replicate with a tag | Tag points at a manifest digest |
+| **Update** | Push/replicate the same tag again | New digest; old blobs kept until GC |
+| **Retire** | Delete tag (UI or `DELETE /v2/.../tags/...`) or delete repository | Metadata removed; blobs may remain |
+| **Reclaim** | **Preview** then **Run garbage collection** on Repositories | Deletes blob files with no manifest revision reference |
+
+Registry API manifest delete (`DELETE /v2/{repo}/manifests/{tag}`) requires an `If-Match` header with the current manifest digest (Distribution spec). The UI and management API delete tags without `If-Match` after you type `repository:tag` to confirm.
 
 ### Management UI pages
 

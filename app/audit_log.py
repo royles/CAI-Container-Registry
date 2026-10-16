@@ -19,6 +19,8 @@ AuditAction = Literal[
     "rename",
     "repo_create",
     "repo_delete",
+    "tag_delete",
+    "gc",
     "auth",
     "runtime_labels",
 ]
@@ -110,6 +112,12 @@ class AuditEvent:
         if self.action == "repo_delete":
             verb = "Delete repository failed" if self.status == "failed" else "Deleted repository"
             return f"{verb} · {self.repository or '—'}"
+        if self.action == "tag_delete":
+            verb = "Delete tag failed" if self.status == "failed" else "Deleted tag"
+            return f"{verb} · {self.display_target()}"
+        if self.action == "gc":
+            verb = "Garbage collection failed" if self.status == "failed" else "Garbage collection"
+            return f"{verb} · {self.message or 'orphan blobs'}"
         if self.action == "runtime_labels":
             return f"Runtime labels updated · {self.display_target()}"
         return self.display_target()
@@ -258,7 +266,39 @@ class RegistryAuditStore:
             action="repo_delete",
             status="succeeded",
             repository=name,
-            message=f"Repository {name} deleted",
+            message=f"Repository {name} deleted (blob data kept until garbage collection)",
+            finished_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.save(event)
+        return event
+
+    def record_tag_delete(
+        self,
+        repository: str,
+        *,
+        tag: str | None,
+        digest: str,
+        message: str = "",
+    ) -> AuditEvent:
+        event = AuditEvent(
+            id=str(uuid.uuid4()),
+            action="tag_delete",
+            status="succeeded",
+            repository=repository,
+            tag=tag,
+            digest=digest,
+            message=message or f"Removed tag {tag or digest}",
+            finished_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.save(event)
+        return event
+
+    def record_gc(self, *, dry_run: bool, summary: str) -> AuditEvent:
+        event = AuditEvent(
+            id=str(uuid.uuid4()),
+            action="gc",
+            status="succeeded",
+            message=summary if not dry_run else f"(dry run) {summary}",
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
         self.save(event)

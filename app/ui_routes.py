@@ -30,6 +30,7 @@ from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
 from app.upload_store import BlobUploadStore
 from app.remote_client import RemoteRegistryAuth
+from app.registry_gc import run_garbage_collection
 from app.storage_browser import browse_storage, storage_browser_href
 
 templates = Jinja2Templates(directory="app/templates")
@@ -37,6 +38,17 @@ router = APIRouter(tags=["ui"])
 
 
 class UIRepoMutation(BaseModel):
+    app_api_key: str | None = None
+
+
+class UIDeleteTagRequest(BaseModel):
+    """Type repository:tag to confirm (e.g. runtimes:v5)."""
+    confirm_ref: str
+    app_api_key: str | None = None
+
+
+class UIGarbageCollectionRequest(BaseModel):
+    dry_run: bool = True
     app_api_key: str | None = None
 
 
@@ -436,6 +448,55 @@ def ui_delete_repository(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     audit.record_repo_delete(repository)
     return {"deleted": repository}
+
+
+@router.post("/ui/repositories/{repository:path}/tags/{tag}/delete")
+def ui_delete_tag(
+    repository: str,
+    tag: str,
+    body: UIDeleteTagRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    expected = f"{repository}:{tag}"
+    if body.confirm_ref.strip() != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Confirmation must match exactly: {expected}",
+        )
+    try:
+        result = storage.remove_tag(repository, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Tag not found: {expected}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_tag_delete(
+        repository,
+        tag=tag,
+        digest=result.get("manifest_digest", ""),
+        message="Tag deleted from UI",
+    )
+    return result
+
+
+@router.post("/ui/gc")
+def ui_garbage_collect(
+    body: UIGarbageCollectionRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    result = run_garbage_collection(storage, dry_run=body.dry_run)
+    summary = (
+        f"{result['orphan_blobs']} orphan blob(s), "
+        f"{'would free' if body.dry_run else 'freed'} "
+        f"{result['would_free_bytes' if body.dry_run else 'freed_bytes']} bytes"
+    )
+    audit.record_gc(dry_run=body.dry_run, summary=summary)
+    return result
 
 
 @router.get("/ui/jobs/{job_id}")

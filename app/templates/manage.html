@@ -8,59 +8,129 @@
     :root {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       color: #1a1a1a;
-      background: #f6f7f9;
+      background: #eef1f5;
+      --sidebar-w: 260px;
+      --accent: #0b5fff;
+      --border: #e3e6ea;
     }
-    body { margin: 0; padding: 24px; }
-    .wrap { max-width: 960px; margin: 0 auto; }
-    h1 { margin-top: 0; font-size: 1.6rem; }
-    .panel {
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    a { color: var(--accent); }
+
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
       background: #fff;
-      border: 1px solid #e3e6ea;
-      border-radius: 10px;
-      margin-bottom: 16px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+    }
+    .brand {
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .brand-title { font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
+    .brand-sub { font-size: 12px; color: #5c6570; margin: 6px 0 0; line-height: 1.4; }
+
+    .nav-group { padding: 8px 12px; }
+    .nav-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: #8b95a5; padding: 8px 8px 6px;
+    }
+    .nav-item {
+      display: block; width: 100%; text-align: left;
+      border: 0; background: transparent; cursor: pointer;
+      padding: 10px 12px; margin: 2px 0; border-radius: 8px;
+      font-size: 14px; font-weight: 500; color: #1a1a1a;
+    }
+    .nav-item:hover { background: #f3f5f8; }
+    .nav-item.active {
+      background: #eef4ff; color: #175cd3; font-weight: 600;
+    }
+    .nav-item-desc {
+      display: block; font-size: 12px; font-weight: 400;
+      color: #5c6570; margin-top: 2px;
+    }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 28px 32px 48px;
+      overflow-y: auto;
+    }
+    .main-header { max-width: 880px; margin-bottom: 24px; }
+    .main-header h1 { margin: 0 0 8px; font-size: 1.5rem; }
+    .main-header .lead { margin: 0; color: #5c6570; font-size: 15px; line-height: 1.5; }
+
+    .view-panel { display: none; max-width: 880px; }
+    .view-panel.active { display: block; }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
-    .panel > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 16px 20px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      user-select: none;
+    .card + .card { margin-top: 16px; }
+    .card.api-card { border-left: 4px solid var(--accent); }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
-    .panel > summary::-webkit-details-marker { display: none; }
-    .panel > summary::before {
-      content: "▸";
-      display: inline-block;
-      width: 1.1em;
-      color: #5c6570;
+    .stat {
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px;
     }
-    .panel[open] > summary::before { content: "▾"; }
-    .panel-body { padding: 0 20px 20px; }
-    .panel.api-card { border-left: 4px solid #0b5fff; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 13px; color: #5c6570; margin-top: 6px; }
+
     label { display: block; font-weight: 600; margin: 12px 0 6px; }
     input[type=text], input[type=password] {
-      width: 100%; box-sizing: border-box; padding: 10px 12px;
+      width: 100%; padding: 10px 12px;
       border: 1px solid #cfd5df; border-radius: 8px; font-size: 14px;
     }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px) {
+      .app-shell { flex-direction: column; }
+      .sidebar { width: 100%; border-right: 0; border-bottom: 1px solid var(--border); }
+      .nav-group { display: flex; flex-wrap: wrap; gap: 4px; }
+      .nav-label { width: 100%; }
+      .nav-item { width: auto; flex: 1 1 auto; min-width: 140px; }
+      .main { padding: 20px 16px 32px; }
+    }
     @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+
     .hint { color: #5c6570; font-size: 13px; margin-top: 4px; }
     .checkbox { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
     .checkbox label { margin: 0; font-weight: 500; }
-    button {
-      margin-top: 16px; background: #0b5fff; color: #fff; border: 0;
+    button.primary {
+      margin-top: 16px; background: var(--accent); color: #fff; border: 0;
       border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer;
     }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    button.btn-inline { margin-top: 0; padding: 6px 10px; font-size: 13px; }
-    button.btn-secondary { background: #fff; color: #0b5fff; border: 1px solid #0b5fff; }
+    button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.btn-inline { margin-top: 0; padding: 6px 10px; font-size: 13px; border-radius: 8px; cursor: pointer; }
+    button.btn-secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
     button.btn-danger { background: #fff; color: #b42318; border: 1px solid #fecdca; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
     .inline-form input[type=text] { flex: 1; min-width: 160px; margin: 0; }
-    #repoStatus { margin-top: 10px; padding: 10px; border-radius: 8px; background: #eef4ff; display: none; font-size: 13px; }
-    #repoStatus.error { background: #fef3f2; color: #b42318; }
+
+    #repoStatus, #jobStatus {
+      margin-top: 12px; padding: 12px; border-radius: 8px;
+      background: #eef4ff; display: none; font-size: 13px;
+    }
+    #repoStatus.error, #jobStatus.error { background: #fef3f2; color: #b42318; }
+
     code { background: #eef1f5; padding: 2px 6px; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #edf0f3; vertical-align: top; }
@@ -68,8 +138,7 @@
     .status.succeeded { color: #067647; }
     .status.failed { color: #b42318; }
     .status.running, .status.queued { color: #175cd3; }
-    #jobStatus { margin-top: 12px; padding: 12px; border-radius: 8px; background: #eef4ff; display: none; }
-    .error { background: #fef3f2; color: #b42318; }
+
     .endpoint {
       margin: 10px 0; border: 1px solid #e3e8ef; border-radius: 8px; background: #f8fafc;
     }
@@ -88,224 +157,344 @@
     }
     .endpoint-desc { font-size: 13px; color: #5c6570; margin-top: 6px; }
     .copy-btn {
-      margin-top: 8px; background: #fff; color: #0b5fff; border: 1px solid #0b5fff;
-      padding: 6px 10px; font-size: 12px; cursor: pointer;
+      margin-top: 8px; background: #fff; color: var(--accent); border: 1px solid var(--accent);
+      padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 6px;
     }
     .badge {
       display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.03em; background: #eef4ff; color: #175cd3; padding: 2px 8px;
       border-radius: 999px; margin-left: 8px; vertical-align: middle;
     }
+    .quick-links { list-style: none; padding: 0; margin: 0; }
+    .quick-links li { margin: 10px 0; }
+    .quick-links button.nav-item { font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>CAI Private Container Registry</h1>
-    <p class="hint">This application serves two interfaces on the same URL: the management console (this page) and the OCI/Docker Registry HTTP API under <code>/v2/</code>.</p>
-
-    <details class="panel api-card" open>
-      <summary>Container registry API <span class="badge">OCI / Docker V2</span></summary>
-      <div class="panel-body">
-        <p class="hint">Use these endpoints for <code>docker pull</code>, <code>docker push</code>, runtime catalog validation, and automation.</p>
-
-        <details class="endpoint" open>
-          <summary>Registry API base</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
-            <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
-            <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>).</p>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Catalog</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
-            <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Example manifest URL</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
-            <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
-            <p class="endpoint-desc">Asset browser: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code></p>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Image reference</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
-            <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Management JSON API</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
-            <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Health</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url" id="url-health">{{ health_url }}</code>
-            <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Authentication</summary>
-          <div class="endpoint-body">
-            {% if local_auth_enabled %}
-            <p class="endpoint-desc">HTTP Basic — username <code>{{ local_registry_username }}</code> (<code>LOCAL_REGISTRY_PASSWORD</code>).</p>
-            {% else %}
-            <p class="endpoint-desc">Not enabled. Set <code>LOCAL_REGISTRY_*</code> to protect <code>/v2/</code>.</p>
-            {% endif %}
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Push from Docker</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url">docker login {{ registry_host }}</code>
-            <p class="endpoint-desc"><code>docker tag</code> / <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code></p>
-          </div>
-        </details>
-
-        <details class="endpoint">
-          <summary>Cloudera Runtime Catalog</summary>
-          <div class="endpoint-body">
-            <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
-            <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code> — no <code>https://</code></p>
-          </div>
-        </details>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Operations">
+      <div class="brand">
+        <p class="brand-title">CAI Private Registry</p>
+        <p class="brand-sub">Management console · OCI API at <code>/v2/</code></p>
       </div>
-    </details>
 
-    <details class="panel" open>
-      <summary>Replicate from a remote repository</summary>
-      <div class="panel-body">
-        <p class="hint">Import images from Cloudera or another OCI registry into this project-local private registry.</p>
-        <form id="replicateForm">
-          <label for="source">Remote image or repository</label>
-          <input id="source" name="source" type="text" required
-            placeholder="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8" />
+      <div class="nav-group">
+        <div class="nav-label">Operations</div>
+        <button type="button" class="nav-item" data-view="home">
+          Overview
+          <span class="nav-item-desc">Summary and shortcuts</span>
+        </button>
+        <button type="button" class="nav-item" data-view="replicate">
+          Replicate remote
+          <span class="nav-item-desc">Import from Cloudera or other registries</span>
+        </button>
+        <button type="button" class="nav-item" data-view="repositories">
+          Repositories
+          <span class="nav-item-desc">Create, rename, delete</span>
+        </button>
+        <button type="button" class="nav-item" data-view="jobs">
+          Replication jobs
+          <span class="nav-item-desc">Recent import activity</span>
+        </button>
+      </div>
 
-          <div class="row">
-            <div>
-              <label for="target_repo">Local repository name</label>
-              <input id="target_repo" name="target_repo" type="text"
-                placeholder="cloudera/ml-runtime-jupyterlab-python3.10-standard" />
-              <p class="hint">Leave blank to keep the same path as the remote repository.</p>
-            </div>
-            <div>
-              <label for="target_tag">Local tag (single-tag mode)</label>
-              <input id="target_tag" name="target_tag" type="text" placeholder="2023.08.2-b8" />
-              <p class="hint">Ignored when replicating all tags.</p>
-            </div>
+      <div class="nav-group">
+        <div class="nav-label">Reference</div>
+        <button type="button" class="nav-item" data-view="api">
+          Registry API
+          <span class="nav-item-desc">URLs for docker &amp; automation</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <h1 id="viewTitle">Overview</h1>
+        <p class="lead" id="viewLead">Your project-local container registry on this application URL.</p>
+      </header>
+
+      <section class="view-panel active" data-view-panel="home" id="panel-home">
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">{{ repositories|length }}</div>
+            <div class="stat-label">Repositories</div>
           </div>
-
-          <div class="checkbox">
-            <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
-            <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
+          <div class="stat">
+            <div class="stat-value">{{ jobs|length }}</div>
+            <div class="stat-label">Recent jobs shown</div>
           </div>
+        </div>
+        <div class="card">
+          <p class="hint" style="margin-top:0;">This application serves the management console and the Docker Registry HTTP API on the same host. Clients use <code>/v2/</code>; you use the operations below to replicate and manage repositories.</p>
+          <ul class="quick-links">
+            <li><button type="button" class="nav-item" data-view="replicate">Start a replication →</button></li>
+            <li><button type="button" class="nav-item" data-view="repositories">Manage repository names →</button></li>
+            <li><button type="button" class="nav-item" data-view="api">Copy registry API URLs →</button></li>
+          </ul>
+        </div>
+      </section>
 
-          <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
-          <div class="row">
-            <div>
-              <label for="remote_username">Username</label>
-              <input id="remote_username" name="remote_username" type="text" autocomplete="username" />
+      <section class="view-panel" data-view-panel="replicate" id="panel-replicate">
+        <div class="card">
+          <form id="replicateForm">
+            <label for="source">Remote image or repository</label>
+            <input id="source" name="source" type="text" required
+              placeholder="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8" />
+
+            <div class="row">
+              <div>
+                <label for="target_repo">Local repository name</label>
+                <input id="target_repo" name="target_repo" type="text"
+                  placeholder="cloudera/ml-runtime-jupyterlab-python3.10-standard" />
+                <p class="hint">Leave blank to keep the same path as the remote repository.</p>
+              </div>
+              <div>
+                <label for="target_tag">Local tag (single-tag mode)</label>
+                <input id="target_tag" name="target_tag" type="text" placeholder="2023.08.2-b8" />
+                <p class="hint">Ignored when replicating all tags.</p>
+              </div>
             </div>
-            <div>
-              <label for="remote_password">Password or token</label>
-              <input id="remote_password" name="remote_password" type="password" autocomplete="current-password" />
+
+            <div class="checkbox">
+              <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
+              <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
             </div>
-          </div>
-          <label for="remote_token">Bearer token (optional, instead of username/password)</label>
-          <input id="remote_token" name="remote_token" type="password" autocomplete="off" />
+
+            <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
+            <div class="row">
+              <div>
+                <label for="remote_username">Username</label>
+                <input id="remote_username" name="remote_username" type="text" autocomplete="username" />
+              </div>
+              <div>
+                <label for="remote_password">Password or token</label>
+                <input id="remote_password" name="remote_password" type="password" autocomplete="current-password" />
+              </div>
+            </div>
+            <label for="remote_token">Bearer token (optional, instead of username/password)</label>
+            <input id="remote_token" name="remote_token" type="password" autocomplete="off" />
+
+            {% if app_api_key_required %}
+            <label for="app_api_key">Admin API key</label>
+            <input id="app_api_key" name="app_api_key" type="password" required />
+            <p class="hint">Set via <code>APP_API_KEY</code> in the application environment.</p>
+            {% endif %}
+
+            <button type="submit" class="primary" id="submitBtn">Start replication</button>
+            <div id="jobStatus"></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view-panel" data-view-panel="repositories" id="panel-repositories">
+        <div class="card">
+          <p class="hint" style="margin-top:0;">Create empty repositories (e.g. <code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>) before push, or they appear when you push or replicate. Metadata: <code>{{ data_dir }}/docker/registry/v2/repositories/</code></p>
 
           {% if app_api_key_required %}
-          <label for="app_api_key">Admin API key</label>
-          <input id="app_api_key" name="app_api_key" type="password" required />
-          <p class="hint">Set via <code>APP_API_KEY</code> in the application environment.</p>
+          <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
+          <input id="repo_admin_api_key" type="password" autocomplete="off" />
           {% endif %}
 
-          <button type="submit" id="submitBtn">Start replication</button>
-          <div id="jobStatus"></div>
-        </form>
-      </div>
-    </details>
+          <form id="createRepoForm" class="inline-form" style="margin-top:14px;">
+            <input id="new_repo_name" type="text" required placeholder="New repository name, e.g. runtimes" />
+            <button type="submit" class="btn-inline primary" style="margin-top:0;">Create repository</button>
+          </form>
+          <div id="repoStatus"></div>
 
-    <details class="panel" open>
-      <summary>Repository names</summary>
-      <div class="panel-body">
-        <p class="hint">Create empty repositories (e.g. <code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>) before push, or they appear automatically when you push or replicate an image. Metadata lives under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>.</p>
+          {% if repositories %}
+          <table style="margin-top:16px;">
+            <thead><tr><th>Repository</th><th>Tags</th><th>Actions</th></tr></thead>
+            <tbody>
+              {% for repo in repositories %}
+              <tr data-repo="{{ repo.name }}">
+                <td><code class="repo-name">{{ repo.name }}</code></td>
+                <td class="repo-tags">{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}{% if not repo.tags %}<span class="hint">empty</span>{% endif %}</td>
+                <td>
+                  <div class="actions">
+                    <button type="button" class="btn-inline btn-secondary btn-rename">Rename</button>
+                    <button type="button" class="btn-inline btn-danger btn-delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, or replicate / push an image.</p>
+          {% endif %}
+        </div>
+      </section>
 
-        {% if app_api_key_required %}
-        <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
-        <input id="repo_admin_api_key" type="password" autocomplete="off" />
-        {% endif %}
+      <section class="view-panel" data-view-panel="jobs" id="panel-jobs">
+        <div class="card">
+          {% if jobs %}
+          <table>
+            <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
+            <tbody>
+              {% for job in jobs %}
+              <tr>
+                <td class="status {{ job.status }}">{{ job.status }}</td>
+                <td><code>{{ job.source }}</code></td>
+                <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
+                <td>{{ job.message }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="hint" style="margin-top:0;">No jobs yet. Use <strong>Replicate remote</strong> to import an image.</p>
+          {% endif %}
+        </div>
+      </section>
 
-        <form id="createRepoForm" class="inline-form" style="margin-top:14px;">
-          <input id="new_repo_name" type="text" required placeholder="New repository name, e.g. runtimes" />
-          <button type="submit" class="btn-inline">Create repository</button>
-        </form>
-        <div id="repoStatus"></div>
+      <section class="view-panel" data-view-panel="api" id="panel-api">
+        <div class="card api-card">
+          <p class="hint" style="margin-top:0;">Use these endpoints for <code>docker pull</code>, <code>docker push</code>, Runtime Catalog validation, and automation. <span class="badge">OCI / Docker V2</span></p>
 
-        {% if repositories %}
-        <table style="margin-top:16px;">
-          <thead><tr><th>Repository</th><th>Tags</th><th>Actions</th></tr></thead>
-          <tbody>
-            {% for repo in repositories %}
-            <tr data-repo="{{ repo.name }}">
-              <td><code class="repo-name">{{ repo.name }}</code></td>
-              <td class="repo-tags">{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}{% if not repo.tags %}<span class="hint">empty</span>{% endif %}</td>
-              <td>
-                <div class="actions">
-                  <button type="button" class="btn-inline btn-secondary btn-rename">Rename</button>
-                  <button type="button" class="btn-inline btn-danger btn-delete">Delete</button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, or replicate / push an image.</p>
-        {% endif %}
-      </div>
-    </details>
+          <details class="endpoint" open>
+            <summary>Registry API base</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
+              <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
+              <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>).</p>
+            </div>
+          </details>
 
-    <details class="panel">
-      <summary>Recent replication jobs</summary>
-      <div class="panel-body">
-        {% if jobs %}
-        <table>
-          <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
-          <tbody>
-            {% for job in jobs %}
-            <tr>
-              <td class="status {{ job.status }}">{{ job.status }}</td>
-              <td><code>{{ job.source }}</code></td>
-              <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
-              <td>{{ job.message }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <p class="hint">No jobs yet.</p>
-        {% endif %}
-      </div>
-    </details>
+          <details class="endpoint">
+            <summary>Catalog</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
+              <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Example manifest URL</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
+              <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
+              <p class="endpoint-desc">Asset browser: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code></p>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Image reference</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
+              <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Management JSON API</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
+              <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Health</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url" id="url-health">{{ health_url }}</code>
+              <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Authentication</summary>
+            <div class="endpoint-body">
+              {% if local_auth_enabled %}
+              <p class="endpoint-desc">HTTP Basic — username <code>{{ local_registry_username }}</code> (<code>LOCAL_REGISTRY_PASSWORD</code>).</p>
+              {% else %}
+              <p class="endpoint-desc">Not enabled. Set <code>LOCAL_REGISTRY_*</code> to protect <code>/v2/</code>.</p>
+              {% endif %}
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Push from Docker</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url">docker login {{ registry_host }}</code>
+              <p class="endpoint-desc"><code>docker tag</code> / <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code></p>
+            </div>
+          </details>
+
+          <details class="endpoint">
+            <summary>Cloudera Runtime Catalog</summary>
+            <div class="endpoint-body">
+              <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
+              <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code> — no <code>https://</code></p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
+    const VIEW_META = {
+      home: {
+        title: "Overview",
+        lead: "Your project-local container registry on this application URL.",
+      },
+      replicate: {
+        title: "Replicate remote",
+        lead: "Import images from Cloudera or another OCI registry into this private registry.",
+      },
+      repositories: {
+        title: "Repositories",
+        lead: "Create empty repositories or manage names, tags, and metadata on disk.",
+      },
+      jobs: {
+        title: "Replication jobs",
+        lead: "Status of recent import jobs started from this console or the JSON API.",
+      },
+      api: {
+        title: "Registry API",
+        lead: "Endpoints and references for docker, Runtime Catalog, and automation.",
+      },
+    };
+
+    const DEFAULT_VIEW = "{{ initial_view }}";
+
+    function validView(id) {
+      return Object.prototype.hasOwnProperty.call(VIEW_META, id);
+    }
+
+    function currentViewFromLocation() {
+      const hash = (location.hash || "").replace(/^#/, "");
+      if (validView(hash)) return hash;
+      const params = new URLSearchParams(location.search);
+      const q = params.get("view");
+      if (q && validView(q)) return q;
+      if (validView(DEFAULT_VIEW)) return DEFAULT_VIEW;
+      return "home";
+    }
+
+    function showView(viewId, { updateHash = true } = {}) {
+      if (!validView(viewId)) viewId = "home";
+      document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.viewPanel === viewId);
+      });
+      document.querySelectorAll(".sidebar .nav-item[data-view]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.view === viewId);
+      });
+      const meta = VIEW_META[viewId];
+      document.getElementById("viewTitle").textContent = meta.title;
+      document.getElementById("viewLead").textContent = meta.lead;
+      if (updateHash && location.hash !== `#${viewId}`) {
+        history.replaceState(null, "", `#${viewId}`);
+      }
+    }
+
+    document.querySelectorAll("[data-view]").forEach((el) => {
+      el.addEventListener("click", () => showView(el.dataset.view));
+    });
+
+    window.addEventListener("hashchange", () => showView(currentViewFromLocation(), { updateHash: false }));
+    showView(currentViewFromLocation(), { updateHash: false });
+
     document.querySelectorAll(".copy-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const el = document.getElementById(btn.dataset.copy);
@@ -328,6 +517,11 @@
       jobStatus.classList.toggle("error", !!isError);
     }
 
+    function reloadKeepingView(viewId) {
+      location.hash = viewId;
+      location.reload();
+    }
+
     async function pollJob(jobId) {
       for (let i = 0; i < 360; i++) {
         const res = await fetch(`/ui/jobs/${jobId}`);
@@ -336,7 +530,7 @@
         const job = data.job;
         showStatus(`Job ${job.id.slice(0, 8)}… ${job.status}: ${job.message || "working…"}`);
         if (job.status === "succeeded" || job.status === "failed") {
-          if (job.status === "succeeded") setTimeout(() => window.location.reload(), 1200);
+          if (job.status === "succeeded") setTimeout(() => reloadKeepingView("repositories"), 1200);
           return;
         }
         await new Promise(r => setTimeout(r, 2000));
@@ -371,7 +565,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Create failed");
         showRepoStatus(`Created repository ${name}`, false);
-        setTimeout(() => window.location.reload(), 800);
+        setTimeout(() => reloadKeepingView("repositories"), 800);
       } catch (err) {
         showRepoStatus(err.message || String(err), true);
       }
@@ -397,7 +591,7 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || "Rename failed");
           showRepoStatus(`Renamed ${oldName} → ${newName.trim()}`, false);
-          setTimeout(() => window.location.reload(), 800);
+          setTimeout(() => reloadKeepingView("repositories"), 800);
         } catch (err) {
           showRepoStatus(err.message || String(err), true);
         }
@@ -419,7 +613,7 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || "Delete failed");
           showRepoStatus(`Deleted ${name}`, false);
-          setTimeout(() => window.location.reload(), 800);
+          setTimeout(() => reloadKeepingView("repositories"), 800);
         } catch (err) {
           showRepoStatus(err.message || String(err), true);
         }
@@ -429,6 +623,7 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       submitBtn.disabled = true;
+      showView("replicate", { updateHash: true });
       showStatus("Starting replication…", false);
       const payload = {
         source: form.source.value.trim(),
@@ -450,6 +645,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Replication request failed");
+        showView("jobs", { updateHash: true });
         await pollJob(data.job_id);
       } catch (err) {
         showStatus(err.message || String(err), true);

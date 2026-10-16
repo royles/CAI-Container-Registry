@@ -98,10 +98,15 @@ def _render_manage_ui(
     registry_host = settings.public_registry_host or request.url.netloc
     example_repo = repos[0]["name"] if repos else "my-team/my-image"
     example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
+    _ui_views = frozenset({"home", "replicate", "repositories", "jobs", "api"})
+    initial_view = request.query_params.get("view", "home")
+    if initial_view not in _ui_views:
+        initial_view = "home"
     return templates.TemplateResponse(
         request,
         "manage.html",
         {
+            "initial_view": initial_view,
             "repositories": repos,
             "jobs": jobs,
             "data_dir": str(settings.registry_data_dir),

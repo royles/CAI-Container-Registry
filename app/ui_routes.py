@@ -32,6 +32,7 @@ from app.upload_store import BlobUploadStore
 from app.remote_client import RemoteRegistryAuth
 from app.registry_gc import run_garbage_collection
 from app.repository_locks import RepositoryLockStore, assert_repository_unlocked
+from app.repository_safety import reject_misrouted_repository_path
 from app.storage_browser import browse_storage, storage_browser_href
 
 templates = Jinja2Templates(directory="app/templates")
@@ -500,6 +501,7 @@ def ui_delete_tag(
             detail=f"Confirmation must match exactly: {expected}",
         )
     try:
+        # Tag delete only — never delete_repository(); other tags and the repo remain.
         result = storage.remove_tag(repository, tag)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Tag not found: {expected}") from exc
@@ -511,6 +513,7 @@ def ui_delete_tag(
         digest=result.get("manifest_digest", ""),
         message="Tag deleted from UI",
     )
+    result["repository_preserved"] = True
     return result
 
 
@@ -524,6 +527,10 @@ def ui_delete_repository(
     lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
+    try:
+        reject_misrouted_repository_path(repository)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if body.confirm_name.strip() != repository:
         raise HTTPException(
             status_code=400,

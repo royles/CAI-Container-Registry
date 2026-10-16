@@ -9,6 +9,8 @@ import re
 import shutil
 from pathlib import Path
 
+from app.repository_safety import reject_misrouted_repository_path
+
 _REPO_NAME = re.compile(r"^[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*$")
 
 
@@ -304,6 +306,7 @@ class LocalRegistryStorage:
 
     def delete_repository(self, name: str) -> None:
         """Remove repository metadata (tags/manifest links). Shared blobs are not deleted."""
+        reject_misrouted_repository_path(name)
         self.validate_repo_name(name)
         path = self._repo_dir(name)
         if not path.is_dir():

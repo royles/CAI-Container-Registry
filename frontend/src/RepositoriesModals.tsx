@@ -231,8 +231,8 @@ function DeleteTagModal({
   return (
     <ModalShell title="Delete tag" onClose={onClose}>
       <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
-        Stop serving <strong>{confirmRef}</strong>. Pull and Runtime Catalog references to this tag will fail until you
-        push or replicate again.
+        Stop serving <strong>{confirmRef}</strong> only. The repository <strong>{repository}</strong> and any other
+        tags are kept. Pull and Runtime Catalog references to this tag will fail until you push or replicate again.
       </p>
       <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
         Type <code>{confirmRef}</code> to confirm

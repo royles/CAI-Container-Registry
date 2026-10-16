@@ -21,6 +21,7 @@ from app.repo_rename import registry_host_candidates, rename_repository_with_dep
 from app.image_refs import build_client_pull_refs, ensure_version_tag_alias_for_tag, probe_registry_tag
 from app.registry_gc import run_garbage_collection
 from app.repository_locks import RepositoryLockStore, assert_repository_unlocked
+from app.repository_safety import reject_misrouted_repository_path
 from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
@@ -286,34 +287,6 @@ class DeleteRepositoryRequest(BaseModel):
     confirm_name: str = Field(..., description="Must match repository name exactly")
 
 
-@app.delete("/api/v1/repositories/{name:path}")
-def delete_repository(
-    name: str,
-    body: DeleteRepositoryRequest,
-    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
-    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
-    _: None = Depends(require_admin_api_key),
-) -> dict:
-    if body.confirm_name.strip() != name:
-        raise HTTPException(
-            status_code=400,
-            detail=f"confirm_name must match repository: {name}",
-        )
-    try:
-        assert_repository_unlocked(lock_store, name)
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    try:
-        storage.delete_repository(name)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    audit.record_repo_delete(name)
-    return {"deleted": name}
-
-
 @app.delete("/api/v1/repositories/{name:path}/tags/{tag}")
 def delete_repository_tag(
     name: str,
@@ -340,7 +313,40 @@ def delete_repository_tag(
         digest=result.get("manifest_digest", ""),
         message="Tag deleted via management API",
     )
+    result["repository_preserved"] = True
     return result
+
+
+@app.delete("/api/v1/repositories/{name:path}")
+def delete_repository(
+    name: str,
+    body: DeleteRepositoryRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    try:
+        reject_misrouted_repository_path(name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if body.confirm_name.strip() != name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"confirm_name must match repository: {name}",
+        )
+    try:
+        assert_repository_unlocked(lock_store, name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    try:
+        storage.delete_repository(name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_repo_delete(name)
+    return {"deleted": name}
 
 
 class GarbageCollectionRequest(BaseModel):

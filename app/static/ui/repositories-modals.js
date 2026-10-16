@@ -260,7 +260,7 @@ nl.Fragment = Cc;
 nl.jsx = ns;
 nl.jsxs = ns;
 Ku.exports = nl;
-var N = Ku.exports, rs = { exports: {} }, we = {}, ls = { exports: {} }, os = {};
+var C = Ku.exports, rs = { exports: {} }, we = {}, ls = { exports: {} }, os = {};
 /**
  * @license React
  * scheduler.production.min.js
@@ -352,21 +352,21 @@ var N = Ku.exports, rs = { exports: {} }, we = {}, ls = { exports: {} }, os = {}
       h = null, p = T, g = !1;
     }
   }
-  var C = !1, _ = null, P = -1, H = 5, j = -1;
+  var _ = !1, N = null, P = -1, H = 5, j = -1;
   function Pe() {
     return !(e.unstable_now() - j < H);
   }
   function sn() {
-    if (_ !== null) {
+    if (N !== null) {
       var x = e.unstable_now();
       j = x;
       var z = !0;
       try {
-        z = _(!0, x);
+        z = N(!0, x);
       } finally {
-        z ? an() : (C = !1, _ = null);
+        z ? an() : (_ = !1, N = null);
       }
-    } else C = !1;
+    } else _ = !1;
   }
   var an;
   if (typeof a == "function") an = function() {
@@ -381,7 +381,7 @@ var N = Ku.exports, rs = { exports: {} }, we = {}, ls = { exports: {} }, os = {}
     D(sn, 0);
   };
   function gl(x) {
-    _ = x, C || (C = !0, an());
+    N = x, _ || (_ = !0, an());
   }
   function wl(x, z) {
     P = D(function() {
@@ -2139,18 +2139,18 @@ function Il(e, t, n, r, l) {
         else if (ru(p)) if (Vs) E = $f;
         else {
           E = Ff;
-          var C = If;
+          var _ = If;
         }
         else (g = p.nodeName) && g.toLowerCase() === "input" && (p.type === "checkbox" || p.type === "radio") && (E = Uf);
         if (E && (E = E(e, c))) {
           Bs(h, E, n, m);
           break e;
         }
-        C && C(e, p, c), e === "focusout" && (C = p._wrapperState) && C.controlled && p.type === "number" && eo(p, "number", p.value);
+        _ && _(e, p, c), e === "focusout" && (_ = p._wrapperState) && _.controlled && p.type === "number" && eo(p, "number", p.value);
       }
-      switch (C = c ? Ut(c) : window, e) {
+      switch (_ = c ? Ut(c) : window, e) {
         case "focusin":
-          (ru(C) || C.contentEditable === "true") && (It = C, po = c, Nn = null);
+          (ru(_) || _.contentEditable === "true") && (It = _, po = c, Nn = null);
           break;
         case "focusout":
           Nn = po = It = null;
@@ -2169,7 +2169,7 @@ function Il(e, t, n, r, l) {
         case "keyup":
           su(h, n, m);
       }
-      var _;
+      var N;
       if (li) e: {
         switch (e) {
           case "compositionstart":
@@ -2185,7 +2185,7 @@ function Il(e, t, n, r, l) {
         P = void 0;
       }
       else Mt ? $s(e, n) && (P = "onCompositionEnd") : e === "keydown" && n.keyCode === 229 && (P = "onCompositionStart");
-      P && (Us && n.locale !== "ko" && (Mt || P !== "onCompositionStart" ? P === "onCompositionEnd" && Mt && (_ = Fs()) : (tt = m, ti = "value" in tt ? tt.value : tt.textContent, Mt = !0)), C = $r(c, P), 0 < C.length && (P = new bi(P, e, null, n, m), h.push({ event: P, listeners: C }), _ ? P.data = _ : (_ = As(n), _ !== null && (P.data = _)))), (_ = Rf ? jf(e, n) : Lf(e, n)) && (c = $r(c, "onBeforeInput"), 0 < c.length && (m = new bi("onBeforeInput", "beforeinput", null, n, m), h.push({ event: m, listeners: c }), m.data = _));
+      P && (Us && n.locale !== "ko" && (Mt || P !== "onCompositionStart" ? P === "onCompositionEnd" && Mt && (N = Fs()) : (tt = m, ti = "value" in tt ? tt.value : tt.textContent, Mt = !0)), _ = $r(c, P), 0 < _.length && (P = new bi(P, e, null, n, m), h.push({ event: P, listeners: _ }), N ? P.data = N : (N = As(n), N !== null && (P.data = N)))), (N = Rf ? jf(e, n) : Lf(e, n)) && (c = $r(c, "onBeforeInput"), 0 < c.length && (m = new bi("onBeforeInput", "beforeinput", null, n, m), h.push({ event: m, listeners: c }), m.data = N));
     }
     qs(h, t);
   });
@@ -2592,8 +2592,8 @@ function oa(e) {
         case Ot:
           return f = f.get(y.key === null ? d : y.key) || null, c(a, f, y, E);
         case Je:
-          var C = y._init;
-          return g(f, a, d, C(y._payload), E);
+          var _ = y._init;
+          return g(f, a, d, _(y._payload), E);
       }
       if (wn(y) || cn(y)) return f = f.get(d) || null, m(a, f, y, E, null);
       hr(a, y);
@@ -2601,22 +2601,22 @@ function oa(e) {
     return null;
   }
   function w(f, a, d, y) {
-    for (var E = null, C = null, _ = a, P = a = 0, H = null; _ !== null && P < d.length; P++) {
-      _.index > P ? (H = _, _ = null) : H = _.sibling;
-      var j = p(f, _, d[P], y);
+    for (var E = null, _ = null, N = a, P = a = 0, H = null; N !== null && P < d.length; P++) {
+      N.index > P ? (H = N, N = null) : H = N.sibling;
+      var j = p(f, N, d[P], y);
       if (j === null) {
-        _ === null && (_ = H);
+        N === null && (N = H);
         break;
       }
-      e && _ && j.alternate === null && t(f, _), a = o(j, a, P), C === null ? E = j : C.sibling = j, C = j, _ = H;
+      e && N && j.alternate === null && t(f, N), a = o(j, a, P), _ === null ? E = j : _.sibling = j, _ = j, N = H;
     }
-    if (P === d.length) return n(f, _), U && gt(f, P), E;
-    if (_ === null) {
-      for (; P < d.length; P++) _ = h(f, d[P], y), _ !== null && (a = o(_, a, P), C === null ? E = _ : C.sibling = _, C = _);
+    if (P === d.length) return n(f, N), U && gt(f, P), E;
+    if (N === null) {
+      for (; P < d.length; P++) N = h(f, d[P], y), N !== null && (a = o(N, a, P), _ === null ? E = N : _.sibling = N, _ = N);
       return U && gt(f, P), E;
     }
-    for (_ = r(f, _); P < d.length; P++) H = g(_, f, P, d[P], y), H !== null && (e && H.alternate !== null && _.delete(H.key === null ? P : H.key), a = o(H, a, P), C === null ? E = H : C.sibling = H, C = H);
-    return e && _.forEach(function(Pe) {
+    for (N = r(f, N); P < d.length; P++) H = g(N, f, P, d[P], y), H !== null && (e && H.alternate !== null && N.delete(H.key === null ? P : H.key), a = o(H, a, P), _ === null ? E = H : _.sibling = H, _ = H);
+    return e && N.forEach(function(Pe) {
       return t(f, Pe);
     }), U && gt(f, P), E;
   }
@@ -2624,25 +2624,25 @@ function oa(e) {
     var E = cn(d);
     if (typeof E != "function") throw Error(v(150));
     if (d = E.call(d), d == null) throw Error(v(151));
-    for (var C = E = null, _ = a, P = a = 0, H = null, j = d.next(); _ !== null && !j.done; P++, j = d.next()) {
-      _.index > P ? (H = _, _ = null) : H = _.sibling;
-      var Pe = p(f, _, j.value, y);
+    for (var _ = E = null, N = a, P = a = 0, H = null, j = d.next(); N !== null && !j.done; P++, j = d.next()) {
+      N.index > P ? (H = N, N = null) : H = N.sibling;
+      var Pe = p(f, N, j.value, y);
       if (Pe === null) {
-        _ === null && (_ = H);
+        N === null && (N = H);
         break;
       }
-      e && _ && Pe.alternate === null && t(f, _), a = o(Pe, a, P), C === null ? E = Pe : C.sibling = Pe, C = Pe, _ = H;
+      e && N && Pe.alternate === null && t(f, N), a = o(Pe, a, P), _ === null ? E = Pe : _.sibling = Pe, _ = Pe, N = H;
     }
     if (j.done) return n(
       f,
-      _
+      N
     ), U && gt(f, P), E;
-    if (_ === null) {
-      for (; !j.done; P++, j = d.next()) j = h(f, j.value, y), j !== null && (a = o(j, a, P), C === null ? E = j : C.sibling = j, C = j);
+    if (N === null) {
+      for (; !j.done; P++, j = d.next()) j = h(f, j.value, y), j !== null && (a = o(j, a, P), _ === null ? E = j : _.sibling = j, _ = j);
       return U && gt(f, P), E;
     }
-    for (_ = r(f, _); !j.done; P++, j = d.next()) j = g(_, f, P, j.value, y), j !== null && (e && j.alternate !== null && _.delete(j.key === null ? P : j.key), a = o(j, a, P), C === null ? E = j : C.sibling = j, C = j);
-    return e && _.forEach(function(sn) {
+    for (N = r(f, N); !j.done; P++, j = d.next()) j = g(N, f, P, j.value, y), j !== null && (e && j.alternate !== null && N.delete(j.key === null ? P : j.key), a = o(j, a, P), _ === null ? E = j : _.sibling = j, _ = j);
+    return e && N.forEach(function(sn) {
       return t(f, sn);
     }), U && gt(f, P), E;
   }
@@ -2651,29 +2651,29 @@ function oa(e) {
       switch (d.$$typeof) {
         case lr:
           e: {
-            for (var E = d.key, C = a; C !== null; ) {
-              if (C.key === E) {
+            for (var E = d.key, _ = a; _ !== null; ) {
+              if (_.key === E) {
                 if (E = d.type, E === Dt) {
-                  if (C.tag === 7) {
-                    n(f, C.sibling), a = l(C, d.props.children), a.return = f, f = a;
+                  if (_.tag === 7) {
+                    n(f, _.sibling), a = l(_, d.props.children), a.return = f, f = a;
                     break e;
                   }
-                } else if (C.elementType === E || typeof E == "object" && E !== null && E.$$typeof === Je && wu(E) === C.type) {
-                  n(f, C.sibling), a = l(C, d.props), a.ref = hn(f, C, d), a.return = f, f = a;
+                } else if (_.elementType === E || typeof E == "object" && E !== null && E.$$typeof === Je && wu(E) === _.type) {
+                  n(f, _.sibling), a = l(_, d.props), a.ref = hn(f, _, d), a.return = f, f = a;
                   break e;
                 }
-                n(f, C);
+                n(f, _);
                 break;
-              } else t(f, C);
-              C = C.sibling;
+              } else t(f, _);
+              _ = _.sibling;
             }
             d.type === Dt ? (a = Ct(d.props.children, f.mode, y, d.key), a.return = f, f = a) : (y = jr(d.type, d.key, d.props, null, f.mode, y), y.ref = hn(f, a, d), y.return = f, f = y);
           }
           return i(f);
         case Ot:
           e: {
-            for (C = d.key; a !== null; ) {
-              if (a.key === C) if (a.tag === 4 && a.stateNode.containerInfo === d.containerInfo && a.stateNode.implementation === d.implementation) {
+            for (_ = d.key; a !== null; ) {
+              if (a.key === _) if (a.tag === 4 && a.stateNode.containerInfo === d.containerInfo && a.stateNode.implementation === d.implementation) {
                 n(f, a.sibling), a = l(a, d.children || []), a.return = f, f = a;
                 break e;
               } else {
@@ -2687,7 +2687,7 @@ function oa(e) {
           }
           return i(f);
         case Je:
-          return C = d._init, D(f, a, C(d._payload), y);
+          return _ = d._init, D(f, a, _(d._payload), y);
       }
       if (wn(d)) return w(f, a, d, y);
       if (cn(d)) return S(f, a, d, y);
@@ -5735,8 +5735,8 @@ function er({
     };
     return window.addEventListener("keydown", r), () => window.removeEventListener("keydown", r);
   }, [n]), lc.createPortal(
-    /* @__PURE__ */ N.jsx("div", { style: Od(), role: "presentation", onMouseDown: (r) => r.target === r.currentTarget && n(), children: /* @__PURE__ */ N.jsxs("div", { style: Dd(), role: "dialog", "aria-modal": "true", "aria-labelledby": "registry-modal-title", children: [
-      /* @__PURE__ */ N.jsx("h2", { id: "registry-modal-title", style: { margin: "0 0 12px", fontSize: "1.15rem" }, children: e }),
+    /* @__PURE__ */ C.jsx("div", { style: Od(), role: "presentation", onMouseDown: (r) => r.target === r.currentTarget && n(), children: /* @__PURE__ */ C.jsxs("div", { style: Dd(), role: "dialog", "aria-modal": "true", "aria-labelledby": "registry-modal-title", children: [
+      /* @__PURE__ */ C.jsx("h2", { id: "registry-modal-title", style: { margin: "0 0 12px", fontSize: "1.15rem" }, children: e }),
       t
     ] }) }),
     document.body
@@ -5773,18 +5773,18 @@ function Md({ repository: e, onClose: t }) {
       }
     }
   };
-  return /* @__PURE__ */ N.jsxs(er, { title: "Delete repository", onClose: t, children: [
-    /* @__PURE__ */ N.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
+  return /* @__PURE__ */ C.jsxs(er, { title: "Delete repository", onClose: t, children: [
+    /* @__PURE__ */ C.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "This removes all tags and manifest metadata for ",
-      /* @__PURE__ */ N.jsx("strong", { children: e }),
+      /* @__PURE__ */ C.jsx("strong", { children: e }),
       ". Clients will no longer pull images from this path. Blob files remain on disk until you run garbage collection."
     ] }),
-    /* @__PURE__ */ N.jsx("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: "Type the repository name to confirm" }),
-    /* @__PURE__ */ N.jsx("input", { type: "text", value: n, autoFocus: !0, onChange: (m) => r(m.target.value), placeholder: e, style: Di }),
-    i ? /* @__PURE__ */ N.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: i }) : null,
-    /* @__PURE__ */ N.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: t, disabled: l, className: "registry-modal-btn secondary", children: "Cancel" }),
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: c, disabled: !s || l, className: "registry-modal-btn danger", children: l ? "Deleting…" : "Delete repository" })
+    /* @__PURE__ */ C.jsx("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: "Type the repository name to confirm" }),
+    /* @__PURE__ */ C.jsx("input", { type: "text", value: n, autoFocus: !0, onChange: (m) => r(m.target.value), placeholder: e, style: Di }),
+    i ? /* @__PURE__ */ C.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: i }) : null,
+    /* @__PURE__ */ C.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: t, disabled: l, className: "registry-modal-btn secondary", children: "Cancel" }),
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: c, disabled: !s || l, className: "registry-modal-btn danger", children: l ? "Deleting…" : "Delete repository" })
     ] })
   ] });
 }
@@ -5808,21 +5808,21 @@ function Id({ repository: e, onClose: t }) {
       }
     }
   };
-  return /* @__PURE__ */ N.jsxs(er, { title: "Unlock repository?", onClose: t, children: [
-    /* @__PURE__ */ N.jsxs("p", { style: { margin: "0 0 10px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
-      /* @__PURE__ */ N.jsx("strong", { children: e }),
+  return /* @__PURE__ */ C.jsxs(er, { title: "Unlock repository?", onClose: t, children: [
+    /* @__PURE__ */ C.jsxs("p", { style: { margin: "0 0 10px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
+      /* @__PURE__ */ C.jsx("strong", { children: e }),
       " is protected. Unlocking allows administrators to:"
     ] }),
-    /* @__PURE__ */ N.jsxs("ul", { style: { margin: "0 0 10px", paddingLeft: 18, fontSize: 13, color: "#5c6570", lineHeight: 1.45 }, children: [
-      /* @__PURE__ */ N.jsx("li", { children: "Delete the repository and all of its tags" }),
-      /* @__PURE__ */ N.jsx("li", { children: "Rename the repository (updates metadata and image references)" }),
-      /* @__PURE__ */ N.jsx("li", { children: "Delete individual tags inside the repository" })
+    /* @__PURE__ */ C.jsxs("ul", { style: { margin: "0 0 10px", paddingLeft: 18, fontSize: 13, color: "#5c6570", lineHeight: 1.45 }, children: [
+      /* @__PURE__ */ C.jsx("li", { children: "Delete the repository and all of its tags" }),
+      /* @__PURE__ */ C.jsx("li", { children: "Rename the repository (updates metadata and image references)" }),
+      /* @__PURE__ */ C.jsx("li", { children: "Delete individual tags inside the repository" })
     ] }),
-    /* @__PURE__ */ N.jsx("p", { style: { margin: 0, fontSize: 13, color: "#8b95a5" }, children: "Push, pull, and replicate are not blocked by the lock. Re-lock anytime from the Repositories page." }),
-    l ? /* @__PURE__ */ N.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: l }) : null,
-    /* @__PURE__ */ N.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: t, disabled: n, className: "registry-modal-btn secondary", children: "Keep locked" }),
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: i, disabled: n, className: "registry-modal-btn primary", children: n ? "Unlocking…" : "Unlock repository" })
+    /* @__PURE__ */ C.jsx("p", { style: { margin: 0, fontSize: 13, color: "#8b95a5" }, children: "Push, pull, and replicate are not blocked by the lock. Re-lock anytime from the Repositories page." }),
+    l ? /* @__PURE__ */ C.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: l }) : null,
+    /* @__PURE__ */ C.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: t, disabled: n, className: "registry-modal-btn secondary", children: "Keep locked" }),
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: i, disabled: n, className: "registry-modal-btn primary", children: n ? "Unlocking…" : "Unlock repository" })
     ] })
   ] });
 }
@@ -5854,22 +5854,24 @@ function Fd({
       }
     }
   };
-  return /* @__PURE__ */ N.jsxs(er, { title: "Delete tag", onClose: r, children: [
-    /* @__PURE__ */ N.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
+  return /* @__PURE__ */ C.jsxs(er, { title: "Delete tag", onClose: r, children: [
+    /* @__PURE__ */ C.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "Stop serving ",
-      /* @__PURE__ */ N.jsx("strong", { children: n }),
-      ". Pull and Runtime Catalog references to this tag will fail until you push or replicate again."
+      /* @__PURE__ */ C.jsx("strong", { children: n }),
+      " only. The repository ",
+      /* @__PURE__ */ C.jsx("strong", { children: e }),
+      " and any other tags are kept. Pull and Runtime Catalog references to this tag will fail until you push or replicate again."
     ] }),
-    /* @__PURE__ */ N.jsxs("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: [
+    /* @__PURE__ */ C.jsxs("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: [
       "Type ",
-      /* @__PURE__ */ N.jsx("code", { children: n }),
+      /* @__PURE__ */ C.jsx("code", { children: n }),
       " to confirm"
     ] }),
-    /* @__PURE__ */ N.jsx("input", { type: "text", value: l, autoFocus: !0, onChange: (p) => o(p.target.value), placeholder: n, style: Di }),
-    s ? /* @__PURE__ */ N.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: s }) : null,
-    /* @__PURE__ */ N.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: r, disabled: i, className: "registry-modal-btn secondary", children: "Cancel" }),
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: h, disabled: !m || i, className: "registry-modal-btn danger", children: i ? "Deleting…" : "Delete tag" })
+    /* @__PURE__ */ C.jsx("input", { type: "text", value: l, autoFocus: !0, onChange: (p) => o(p.target.value), placeholder: n, style: Di }),
+    s ? /* @__PURE__ */ C.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: s }) : null,
+    /* @__PURE__ */ C.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: r, disabled: i, className: "registry-modal-btn secondary", children: "Cancel" }),
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: h, disabled: !m || i, className: "registry-modal-btn danger", children: i ? "Deleting…" : "Delete tag" })
     ] })
   ] });
 }
@@ -5896,18 +5898,18 @@ function Ud({ repository: e, onClose: t }) {
       }
     }
   };
-  return /* @__PURE__ */ N.jsxs(er, { title: "Rename repository", onClose: t, children: [
-    /* @__PURE__ */ N.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
+  return /* @__PURE__ */ C.jsxs(er, { title: "Rename repository", onClose: t, children: [
+    /* @__PURE__ */ C.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "Updates on-disk metadata and image references that mention ",
-      /* @__PURE__ */ N.jsx("strong", { children: e }),
+      /* @__PURE__ */ C.jsx("strong", { children: e }),
       "."
     ] }),
-    /* @__PURE__ */ N.jsx("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: "New repository name" }),
-    /* @__PURE__ */ N.jsx("input", { type: "text", value: n, autoFocus: !0, onChange: (m) => r(m.target.value), style: Di }),
-    i ? /* @__PURE__ */ N.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: i }) : null,
-    /* @__PURE__ */ N.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: t, disabled: l, className: "registry-modal-btn secondary", children: "Cancel" }),
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: c, disabled: !s || l, className: "registry-modal-btn primary", children: l ? "Renaming…" : "Rename" })
+    /* @__PURE__ */ C.jsx("label", { style: { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }, children: "New repository name" }),
+    /* @__PURE__ */ C.jsx("input", { type: "text", value: n, autoFocus: !0, onChange: (m) => r(m.target.value), style: Di }),
+    i ? /* @__PURE__ */ C.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: i }) : null,
+    /* @__PURE__ */ C.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: t, disabled: l, className: "registry-modal-btn secondary", children: "Cancel" }),
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: c, disabled: !s || l, className: "registry-modal-btn primary", children: l ? "Renaming…" : "Rename" })
     ] })
   ] });
 }
@@ -5929,17 +5931,17 @@ function $d({ onClose: e }) {
       }
     }
   };
-  return /* @__PURE__ */ N.jsxs(er, { title: "Run garbage collection?", onClose: e, children: [
-    /* @__PURE__ */ N.jsx("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: "Permanently delete blob files that are no longer referenced by any repository manifest. This cannot be undone." }),
-    /* @__PURE__ */ N.jsxs("p", { style: { margin: 0, fontSize: 13, color: "#8b95a5" }, children: [
+  return /* @__PURE__ */ C.jsxs(er, { title: "Run garbage collection?", onClose: e, children: [
+    /* @__PURE__ */ C.jsx("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: "Permanently delete blob files that are no longer referenced by any repository manifest. This cannot be undone." }),
+    /* @__PURE__ */ C.jsxs("p", { style: { margin: 0, fontSize: 13, color: "#8b95a5" }, children: [
       "Use ",
-      /* @__PURE__ */ N.jsx("strong", { children: "Preview garbage collection" }),
+      /* @__PURE__ */ C.jsx("strong", { children: "Preview garbage collection" }),
       " first to see how much space would be reclaimed."
     ] }),
-    r ? /* @__PURE__ */ N.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: r }) : null,
-    /* @__PURE__ */ N.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: e, disabled: t, className: "registry-modal-btn secondary", children: "Cancel" }),
-      /* @__PURE__ */ N.jsx("button", { type: "button", onClick: o, disabled: t, className: "registry-modal-btn danger", children: t ? "Running…" : "Delete orphan blobs" })
+    r ? /* @__PURE__ */ C.jsx("p", { style: { color: "#b42318", fontSize: 13, margin: "10px 0 0" }, role: "alert", children: r }) : null,
+    /* @__PURE__ */ C.jsxs("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }, children: [
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: e, disabled: t, className: "registry-modal-btn secondary", children: "Cancel" }),
+      /* @__PURE__ */ C.jsx("button", { type: "button", onClick: o, disabled: t, className: "registry-modal-btn danger", children: t ? "Running…" : "Delete orphan blobs" })
     ] })
   ] });
 }
@@ -5965,7 +5967,7 @@ function Ad() {
       window.__registryModalQueue = [];
     }
     window.dispatchEvent(new Event("registry-repositories-ui-ready"));
-  }, [o]), !e || !n ? null : e === "delete" ? /* @__PURE__ */ N.jsx(Md, { repository: n.repository, onClose: l }) : e === "unlock" ? /* @__PURE__ */ N.jsx(Id, { repository: n.repository, onClose: l }) : e === "deleteTag" && n.tag && n.confirmRef ? /* @__PURE__ */ N.jsx(
+  }, [o]), !e || !n ? null : e === "delete" ? /* @__PURE__ */ C.jsx(Md, { repository: n.repository, onClose: l }) : e === "unlock" ? /* @__PURE__ */ C.jsx(Id, { repository: n.repository, onClose: l }) : e === "deleteTag" && n.tag && n.confirmRef ? /* @__PURE__ */ C.jsx(
     Fd,
     {
       repository: n.repository,
@@ -5973,7 +5975,7 @@ function Ad() {
       confirmRef: n.confirmRef,
       onClose: l
     }
-  ) : e === "rename" ? /* @__PURE__ */ N.jsx(Ud, { repository: n.repository, onClose: l }) : e === "gc" ? /* @__PURE__ */ N.jsx($d, { onClose: l }) : null;
+  ) : e === "rename" ? /* @__PURE__ */ C.jsx(Ud, { repository: n.repository, onClose: l }) : e === "gc" ? /* @__PURE__ */ C.jsx($d, { onClose: l }) : null;
 }
 const Qu = document.getElementById("registry-modals-root");
-Qu && oc(Qu).render(/* @__PURE__ */ N.jsx(Ad, {}));
+Qu && oc(Qu).render(/* @__PURE__ */ C.jsx(Ad, {}));

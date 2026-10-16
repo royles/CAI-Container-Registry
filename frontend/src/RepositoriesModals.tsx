@@ -19,19 +19,20 @@ function overlayStyle(): React.CSSProperties {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10000,
-    padding: 16,
+    padding: 12,
   };
 }
 
 function dialogStyle(): React.CSSProperties {
   return {
     background: "#fff",
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid #e3e6ea",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
-    maxWidth: 480,
+    boxShadow: "0 8px 28px rgba(0,0,0,0.1)",
+    maxWidth: 440,
     width: "100%",
-    padding: "22px 24px",
+    padding: "16px 18px",
+    fontSize: 14,
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: "#3c3c3c",
   };
@@ -57,7 +58,7 @@ function ModalShell({
   return createPortal(
     <div style={overlayStyle()} role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div style={dialogStyle()} role="dialog" aria-modal="true" aria-labelledby="registry-modal-title">
-        <h2 id="registry-modal-title" style={{ margin: "0 0 12px", fontSize: "1.15rem" }}>
+        <h2 id="registry-modal-title" style={{ margin: "0 0 8px", fontSize: "0.95rem", fontWeight: 700 }}>
           {title}
         </h2>
         {children}
@@ -69,10 +70,10 @@ function ModalShell({
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "10px 12px",
+  padding: "7px 10px",
   border: "1px solid #cfd5df",
-  borderRadius: 8,
-  fontSize: 14,
+  borderRadius: 6,
+  fontSize: 13,
   boxSizing: "border-box",
 };
 
@@ -108,7 +109,7 @@ function DeleteRepositoryModal({ repository, onClose }: { repository: string; on
 
   return (
     <ModalShell title="Delete repository" onClose={onClose}>
-      <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
         This removes all tags and manifest metadata for <strong>{repository}</strong>. Clients will no longer pull
         images from this path. Blob files remain on disk until you run garbage collection.
       </p>
@@ -160,10 +161,10 @@ function UnlockRepositoryModal({ repository, onClose }: { repository: string; on
 
   return (
     <ModalShell title="Unlock repository?" onClose={onClose}>
-      <p style={{ margin: "0 0 10px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }}>
+      <p style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
         <strong>{repository}</strong> is protected. Unlocking allows administrators to:
       </p>
-      <ul style={{ margin: "0 0 14px", paddingLeft: 20, fontSize: 14, color: "#5c6570", lineHeight: 1.5 }}>
+      <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: 13, color: "#5c6570", lineHeight: 1.45 }}>
         <li>Delete the repository and all of its tags</li>
         <li>Rename the repository (updates metadata and image references)</li>
         <li>Delete individual tags inside the repository</li>
@@ -230,7 +231,7 @@ function DeleteTagModal({
 
   return (
     <ModalShell title="Delete tag" onClose={onClose}>
-      <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
         Stop serving <strong>{confirmRef}</strong>. Pull and Runtime Catalog references to this tag will fail until you
         push or replicate again.
       </p>
@@ -287,7 +288,7 @@ function RenameRepositoryModal({ repository, onClose }: { repository: string; on
 
   return (
     <ModalShell title="Rename repository" onClose={onClose}>
-      <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
         Updates on-disk metadata and image references that mention <strong>{repository}</strong>.
       </p>
       <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
@@ -337,7 +338,7 @@ function GarbageCollectionModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell title="Run garbage collection?" onClose={onClose}>
-      <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }}>
         Permanently delete blob files that are no longer referenced by any repository manifest. This cannot be undone.
       </p>
       <p style={{ margin: 0, fontSize: 13, color: "#8b95a5" }}>

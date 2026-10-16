@@ -21191,18 +21191,19 @@ function ok() {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1e4,
-    padding: 16
+    padding: 12
   };
 }
 function sk() {
   return {
     background: "#fff",
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid #e3e6ea",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
-    maxWidth: 480,
+    boxShadow: "0 8px 28px rgba(0,0,0,0.1)",
+    maxWidth: 440,
     width: "100%",
-    padding: "22px 24px",
+    padding: "16px 18px",
+    fontSize: 14,
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: "#3c3c3c"
   };
@@ -21219,7 +21220,7 @@ function nv({
     return window.addEventListener("keydown", $e), () => window.removeEventListener("keydown", $e);
   }, [k]), pT.createPortal(
     /* @__PURE__ */ Le.jsx("div", { style: ok(), role: "presentation", onMouseDown: ($e) => $e.target === $e.currentTarget && k(), children: /* @__PURE__ */ Le.jsxs("div", { style: sk(), role: "dialog", "aria-modal": "true", "aria-labelledby": "registry-modal-title", children: [
-      /* @__PURE__ */ Le.jsx("h2", { id: "registry-modal-title", style: { margin: "0 0 12px", fontSize: "1.15rem" }, children: I }),
+      /* @__PURE__ */ Le.jsx("h2", { id: "registry-modal-title", style: { margin: "0 0 8px", fontSize: "0.95rem", fontWeight: 700 }, children: I }),
       B
     ] }) }),
     document.body
@@ -21227,10 +21228,10 @@ function nv({
 }
 const gE = {
   width: "100%",
-  padding: "10px 12px",
+  padding: "7px 10px",
   border: "1px solid #cfd5df",
-  borderRadius: 8,
-  fontSize: 14,
+  borderRadius: 6,
+  fontSize: 13,
   boxSizing: "border-box"
 };
 function ck({ repository: I, onClose: B }) {
@@ -21257,7 +21258,7 @@ function ck({ repository: I, onClose: B }) {
     }
   };
   return /* @__PURE__ */ Le.jsxs(nv, { title: "Delete repository", onClose: B, children: [
-    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }, children: [
+    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "This removes all tags and manifest metadata for ",
       /* @__PURE__ */ Le.jsx("strong", { children: I }),
       ". Clients will no longer pull images from this path. Blob files remain on disk until you run garbage collection."
@@ -21292,11 +21293,11 @@ function fk({ repository: I, onClose: B }) {
     }
   };
   return /* @__PURE__ */ Le.jsxs(nv, { title: "Unlock repository?", onClose: B, children: [
-    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 10px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }, children: [
+    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 10px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       /* @__PURE__ */ Le.jsx("strong", { children: I }),
       " is protected. Unlocking allows administrators to:"
     ] }),
-    /* @__PURE__ */ Le.jsxs("ul", { style: { margin: "0 0 14px", paddingLeft: 20, fontSize: 14, color: "#5c6570", lineHeight: 1.5 }, children: [
+    /* @__PURE__ */ Le.jsxs("ul", { style: { margin: "0 0 10px", paddingLeft: 18, fontSize: 13, color: "#5c6570", lineHeight: 1.45 }, children: [
       /* @__PURE__ */ Le.jsx("li", { children: "Delete the repository and all of its tags" }),
       /* @__PURE__ */ Le.jsx("li", { children: "Rename the repository (updates metadata and image references)" }),
       /* @__PURE__ */ Le.jsx("li", { children: "Delete individual tags inside the repository" })
@@ -21338,7 +21339,7 @@ function dk({
     }
   };
   return /* @__PURE__ */ Le.jsxs(nv, { title: "Delete tag", onClose: $e, children: [
-    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }, children: [
+    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "Stop serving ",
       /* @__PURE__ */ Le.jsx("strong", { children: k }),
       ". Pull and Runtime Catalog references to this tag will fail until you push or replicate again."
@@ -21380,7 +21381,7 @@ function pk({ repository: I, onClose: B }) {
     }
   };
   return /* @__PURE__ */ Le.jsxs(nv, { title: "Rename repository", onClose: B, children: [
-    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }, children: [
+    /* @__PURE__ */ Le.jsxs("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: [
       "Updates on-disk metadata and image references that mention ",
       /* @__PURE__ */ Le.jsx("strong", { children: I }),
       "."
@@ -21413,7 +21414,7 @@ function vk({ onClose: I }) {
     }
   };
   return /* @__PURE__ */ Le.jsxs(nv, { title: "Run garbage collection?", onClose: I, children: [
-    /* @__PURE__ */ Le.jsx("p", { style: { margin: "0 0 12px", fontSize: 14, lineHeight: 1.5, color: "#5c6570" }, children: "Permanently delete blob files that are no longer referenced by any repository manifest. This cannot be undone." }),
+    /* @__PURE__ */ Le.jsx("p", { style: { margin: "0 0 12px", fontSize: 13, lineHeight: 1.45, color: "#5c6570" }, children: "Permanently delete blob files that are no longer referenced by any repository manifest. This cannot be undone." }),
     /* @__PURE__ */ Le.jsxs("p", { style: { margin: 0, fontSize: 13, color: "#8b95a5" }, children: [
       "Use ",
       /* @__PURE__ */ Le.jsx("strong", { children: "Preview garbage collection" }),

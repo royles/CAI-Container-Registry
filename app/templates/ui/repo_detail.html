@@ -9,7 +9,7 @@
   <code>/{{ repository }}:{{ tag }}</code>. Bytes live under <code>{{ data_dir }}/</code>.
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Docker pull &amp; Runtime Catalog</h2>
+  <h2 class="card-title">Docker pull &amp; Runtime Catalog</h2>
   <p class="hint" style="margin-top:0;">Image reference for pull and catalog upload (no <code>https://</code>):</p>
   {% if pull_refs.catalog_warning %}
   <p class="hint" style="color:#b42318;margin:8px 0;"><strong>{{ pull_refs.catalog_warning }}</strong></p>
@@ -25,7 +25,7 @@
   {% endif %}
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Cloudera runtime metadata</h2>
+  <h2 class="card-title">Cloudera runtime metadata</h2>
   {% if cloudera_meta.cloudera_labels_missing %}
   <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
   {% elif cloudera_meta.ok %}
@@ -55,7 +55,7 @@
   {% endif %}
 </div>
 <div class="card" id="runtime-labels">
-  <h2 style="margin-top:0;font-size:1.05rem;">Edit runtime labels</h2>
+  <h2 class="card-title">Edit runtime labels</h2>
   <p class="hint" style="margin-top:0;">
     Only needed for custom runtimes or Catalog validation fixes. Updates labels and <code>ML_RUNTIME_*</code> env entries.
     Pull URL stays <code>{{ pull_refs.client_pull_ref }}</code> unless you add an optional alias tag.
@@ -93,7 +93,7 @@
   </form>
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Registry API</h2>
+  <h2 class="card-title">Registry API</h2>
   <ul class="hint">
     <li>Manifest: <code>{{ manifest_url }}</code></li>
     <li>Tags list: <code>{{ tags_list_url }}</code></li>
@@ -101,7 +101,7 @@
   </ul>
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">On-disk layout</h2>
+  <h2 class="card-title">On-disk layout</h2>
   <table>
     <tr><th>Role</th><th>Relative path</th></tr>
     <tr><td>Repository metadata</td><td><code>{{ detail.repo_metadata_relative_path }}/</code></td></tr>
@@ -125,7 +125,7 @@
   {% endif %}
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Retire this version</h2>
+  <h2 class="card-title">Retire this version</h2>
   <p class="hint" style="margin-top:0;">
     Removes tag <code>{{ repository }}:{{ tag }}</code> from the registry API. Manifest and layer blobs remain until
     no repository references them, then run <strong>garbage collection</strong> on the Repositories page.

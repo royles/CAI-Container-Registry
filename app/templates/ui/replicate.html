@@ -23,7 +23,7 @@
       <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
       <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
     </div>
-    <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
+    <h3 class="card-title" style="margin-top:12px;">Remote credentials</h3>
     <div class="row">
       <div>
         <label for="remote_username">Username</label>
@@ -46,8 +46,8 @@
   </form>
 </div>
 
-<div class="card" style="margin-top:16px;">
-  <h2 style="margin:0 0 12px;font-size:1.05rem;">Recent replication jobs</h2>
+<div class="card">
+  <h2 class="card-title">Recent replication jobs</h2>
   {% if jobs %}
   <table>
     <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>

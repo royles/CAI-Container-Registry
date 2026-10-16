@@ -4,9 +4,9 @@
 <div id="registry-modals-root"></div>
 <div class="card">
   <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog — always <code>{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> (the tag you replicated or pushed). Registry API: <code>{{ registry_v2_url }}</code></p>
-  <div class="card" style="margin-top:14px;background:#f8fafc;border-color:#e2e8f0;">
-    <h3 style="margin:0 0 8px;font-size:0.95rem;">Image lifecycle (OCI best practice)</h3>
-    <ol class="hint" style="margin:0;padding-left:1.2rem;">
+  <div class="card" style="margin-top:10px;background:#f8fafc;border-color:#e2e8f0;padding:10px 12px;">
+    <h3 class="card-title">Image lifecycle (OCI best practice)</h3>
+    <ol class="hint" style="margin:0;padding-left:1.1rem;line-height:1.35;">
       <li><strong>Create</strong> — empty repository or first <code>docker push</code> / replicate.</li>
       <li><strong>Update</strong> — push or replicate the same tag again (new manifest digest; old blobs stay until GC).</li>
       <li><strong>Retire</strong> — delete individual tags (below) or the whole repository.</li>
@@ -23,13 +23,13 @@
   <label for="repo_admin_api_key">Admin API key (create / rename / delete / lock)</label>
   <input id="repo_admin_api_key" type="password" autocomplete="off" />
   {% endif %}
-  <form id="createRepoForm" class="inline-form" style="margin-top:14px;">
+  <form id="createRepoForm" class="inline-form" style="margin-top:10px;">
     <input id="new_repo_name" type="text" required placeholder="New repository name, e.g. runtimes" />
     <button type="submit" class="btn-inline primary" style="margin-top:0;">Create repository</button>
   </form>
   <div id="repoStatus" class="status-banner"></div>
   {% if repositories %}
-  <table style="margin-top:16px;">
+  <table style="margin-top:10px;">
     <thead>
       <tr>
         <th>Repository</th>

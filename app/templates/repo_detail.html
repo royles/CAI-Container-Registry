@@ -9,12 +9,28 @@
     body { margin: 0; padding: 24px; }
     .wrap { max-width: 960px; margin: 0 auto; }
     a { color: #0b5fff; }
-    .card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    .panel {
+      background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+      margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .panel > summary {
+      list-style: none; cursor: pointer; padding: 16px 20px;
+      font-size: 1.05rem; font-weight: 600; user-select: none;
+    }
+    .panel > summary::-webkit-details-marker { display: none; }
+    .panel > summary::before {
+      content: "▸"; display: inline-block; width: 1.1em; color: #5c6570;
+    }
+    .panel[open] > summary::before { content: "▾"; }
+    .panel-body { padding: 0 20px 20px; }
     code { background: #eef1f5; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
     .hint { color: #5c6570; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #edf0f3; vertical-align: top; }
-    .callout { background: #fff8e6; border: 1px solid #f5d98a; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; }
+    .callout {
+      background: #fff8e6; border: 1px solid #f5d98a; border-radius: 8px;
+      padding: 12px; margin-bottom: 16px; font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -22,60 +38,69 @@
     <p><a href="/">← Back to registry console</a></p>
     <h1><code>{{ repository }}:{{ tag }}</code></h1>
 
-    <div class="callout">
-      Container images are <strong>not</strong> served as web pages at <code>/{{ repository }}:{{ tag }}</code>.
-      Clients use the <strong>Registry HTTP API</strong> below. Layer and manifest bytes live on disk under
-      <code>{{ data_dir }}/</code> (deduplicated blob store).
-    </div>
+    <details class="panel" open>
+      <summary>Overview</summary>
+      <div class="panel-body callout" style="margin-bottom:0;border-radius:8px;">
+        Container images are <strong>not</strong> served as web pages at <code>/{{ repository }}:{{ tag }}</code>.
+        Clients use the <strong>Registry HTTP API</strong>. Layer and manifest bytes live under
+        <code>{{ data_dir }}/</code>.
+      </div>
+    </details>
 
-    <div class="card">
-      <h2>Cloudera Runtime Catalog — image field</h2>
-      <p class="hint">Paste this in <strong>Registry of Docker Image to Upload</strong>. Do <strong>not</strong> use <code>https://</code> and do <strong>not</strong> use the browser path <code>/{{ repository }}:{{ tag }}</code>.</p>
-      <p><code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
-      <p class="hint">Also add Docker credentials in Site Administration → Runtimes for server <code>{{ registry_host }}</code> (hostname only, no path) if <code>LOCAL_REGISTRY_*</code> auth is enabled — the same values as the application env. Validate is run by the <strong>runtime-manager</strong> pod in the cluster, not from this browser.</p>
-      {% if cloudera_meta.cloudera_labels_missing %}
-      <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels</strong> in the image config — Runtime Catalog will reject metadata even if the registry URL is correct. {{ cloudera_meta.hint }}</p>
-      {% elif cloudera_meta.ok %}
-      <p class="hint" style="color:#067647;">Cloudera runtime labels present in local config blob. If Validate still fails, check TLS/credentials and <code>{{ diagnostics_url }}</code>.</p>
-      {% endif %}
-    </div>
+    <details class="panel" open>
+      <summary>Cloudera Runtime Catalog — image field</summary>
+      <div class="panel-body">
+        <p class="hint">Paste in <strong>Registry of Docker Image to Upload</strong> (no <code>https://</code>).</p>
+        <p><code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
+        <p class="hint">Docker credentials in Site Administration → server <code>{{ registry_host }}</code> if auth enabled.</p>
+        {% if cloudera_meta.cloudera_labels_missing %}
+        <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
+        {% elif cloudera_meta.ok %}
+        <p class="hint" style="color:#067647;">Cloudera runtime labels present. Diagnostics: <code>{{ diagnostics_url }}</code></p>
+        {% endif %}
+      </div>
+    </details>
 
-    <div class="card">
-      <h2>Registry API (how clients access this image)</h2>
-      <ul>
-        <li>Manifest: <code>{{ manifest_url }}</code></li>
-        <li>Tags list: <code>{{ tags_list_url }}</code></li>
-        <li>Image reference: <code>{{ image_ref }}</code></li>
-      </ul>
-    </div>
+    <details class="panel">
+      <summary>Registry API (client access)</summary>
+      <div class="panel-body">
+        <ul>
+          <li>Manifest: <code>{{ manifest_url }}</code></li>
+          <li>Tags list: <code>{{ tags_list_url }}</code></li>
+          <li>Image reference: <code>{{ image_ref }}</code></li>
+        </ul>
+      </div>
+    </details>
 
-    <div class="card">
-      <h2>On-disk assets (project storage)</h2>
-      <p class="hint">Root: <code>{{ data_dir }}</code></p>
-      <table>
-        <tr><th>Role</th><th>Path (relative to registry root)</th></tr>
-        <tr><td>Repository metadata</td><td><code>{{ detail.repo_metadata_relative_path }}/</code></td></tr>
-        <tr><td>Tag pointer</td><td><code>{{ detail.tag_link_relative_path }}</code></td></tr>
-        <tr><td>Manifest blob</td><td><code>{{ detail.manifest_relative_path }}</code> (<code>{{ detail.manifest_digest }}</code>)</td></tr>
-      </table>
-      <h3>Layers &amp; config blobs</h3>
-      {% if detail.blobs %}
-      <table>
-        <thead><tr><th>Digest</th><th>File</th><th>Size</th></tr></thead>
-        <tbody>
-          {% for b in detail.blobs %}
-          <tr>
-            <td><code>{{ b.digest }}</code></td>
-            <td><code>{{ b.relative_path }}</code></td>
-            <td>{% if b.size_bytes is defined %}{{ b.size_bytes }} bytes{% else %}—{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="hint">No blobs recorded for this manifest.</p>
-      {% endif %}
-    </div>
+    <details class="panel">
+      <summary>On-disk assets (project storage)</summary>
+      <div class="panel-body">
+        <p class="hint">Root: <code>{{ data_dir }}</code></p>
+        <table>
+          <tr><th>Role</th><th>Path (relative to registry root)</th></tr>
+          <tr><td>Repository metadata</td><td><code>{{ detail.repo_metadata_relative_path }}/</code></td></tr>
+          <tr><td>Tag pointer</td><td><code>{{ detail.tag_link_relative_path }}</code></td></tr>
+          <tr><td>Manifest blob</td><td><code>{{ detail.manifest_relative_path }}</code> (<code>{{ detail.manifest_digest }}</code>)</td></tr>
+        </table>
+        <h3>Layers &amp; config blobs</h3>
+        {% if detail.blobs %}
+        <table>
+          <thead><tr><th>Digest</th><th>File</th><th>Size</th></tr></thead>
+          <tbody>
+            {% for b in detail.blobs %}
+            <tr>
+              <td><code>{{ b.digest }}</code></td>
+              <td><code>{{ b.relative_path }}</code></td>
+              <td>{% if b.size_bytes is defined %}{{ b.size_bytes }} bytes{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="hint">No blobs recorded for this manifest.</p>
+        {% endif %}
+      </div>
+    </details>
   </div>
 </body>
 </html>

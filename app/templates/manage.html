@@ -13,14 +13,31 @@
     body { margin: 0; padding: 24px; }
     .wrap { max-width: 960px; margin: 0 auto; }
     h1 { margin-top: 0; font-size: 1.6rem; }
-    .card {
+    .panel {
       background: #fff;
       border: 1px solid #e3e6ea;
       border-radius: 10px;
-      padding: 20px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
+    .panel > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      user-select: none;
+    }
+    .panel > summary::-webkit-details-marker { display: none; }
+    .panel > summary::before {
+      content: "▸";
+      display: inline-block;
+      width: 1.1em;
+      color: #5c6570;
+    }
+    .panel[open] > summary::before { content: "▾"; }
+    .panel-body { padding: 0 20px 20px; }
+    .panel.api-card { border-left: 4px solid #0b5fff; }
     label { display: block; font-weight: 600; margin: 12px 0 6px; }
     input[type=text], input[type=password] {
       width: 100%; box-sizing: border-box; padding: 10px 12px;
@@ -45,13 +62,18 @@
     .status.running, .status.queued { color: #175cd3; }
     #jobStatus { margin-top: 12px; padding: 12px; border-radius: 8px; background: #eef4ff; display: none; }
     .error { background: #fef3f2; color: #b42318; }
-    .api-card { border-left: 4px solid #0b5fff; }
-    .api-card h2 { margin-top: 0; }
     .endpoint {
-      margin: 14px 0; padding: 12px; background: #f8fafc;
-      border: 1px solid #e3e8ef; border-radius: 8px;
+      margin: 10px 0; border: 1px solid #e3e8ef; border-radius: 8px; background: #f8fafc;
     }
-    .endpoint-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    .endpoint > summary {
+      list-style: none; cursor: pointer; padding: 10px 12px; font-weight: 600; font-size: 14px;
+    }
+    .endpoint > summary::-webkit-details-marker { display: none; }
+    .endpoint > summary::before {
+      content: "▸"; display: inline-block; width: 1em; color: #5c6570;
+    }
+    .endpoint[open] > summary::before { content: "▾"; }
+    .endpoint-body { padding: 0 12px 12px; }
     .endpoint-url {
       display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 13px; word-break: break-all; color: #0f172a;
@@ -59,7 +81,7 @@
     .endpoint-desc { font-size: 13px; color: #5c6570; margin-top: 6px; }
     .copy-btn {
       margin-top: 8px; background: #fff; color: #0b5fff; border: 1px solid #0b5fff;
-      padding: 6px 10px; font-size: 12px;
+      padding: 6px 10px; font-size: 12px; cursor: pointer;
     }
     .badge {
       display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -73,169 +95,195 @@
     <h1>CAI Private Container Registry</h1>
     <p class="hint">This application serves two interfaces on the same URL: the management console (this page) and the OCI/Docker Registry HTTP API under <code>/v2/</code>.</p>
 
-    <div class="card api-card">
-      <h2>Container registry API <span class="badge">OCI / Docker V2</span></h2>
-      <p class="hint">Use these endpoints for <code>docker pull</code>, <code>crane</code>, <code>skopeo</code>, runtime catalog validation, and automation. All registry data paths live under <code>/v2/</code> on this application host (proxied by Cloudera AI to <code>127.0.0.1:CDSW_APP_PORT</code>).</p>
+    <details class="panel api-card" open>
+      <summary>Container registry API <span class="badge">OCI / Docker V2</span></summary>
+      <div class="panel-body">
+        <p class="hint">Use these endpoints for <code>docker pull</code>, <code>docker push</code>, runtime catalog validation, and automation.</p>
 
-      <div class="endpoint">
-        <div class="endpoint-title">Registry API base (required prefix for all image operations)</div>
-        <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
-        <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
-        <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>). Docker clients and tools resolve manifests and blobs relative to this base.</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Catalog</div>
-        <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
-        <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
-        <p class="endpoint-desc">Lists repository names stored in this project-local registry.</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Example manifest URL</div>
-        <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
-        <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
-        <p class="endpoint-desc">Pattern: <code>{{ registry_v2_url }}&lt;repository&gt;/manifests/&lt;tag-or-digest&gt;</code>.
-          Human-readable asset locations: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code> (not <code>/repo:tag</code>).</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Image reference (registry host + repository)</div>
-        <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
-        <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
-        <p class="endpoint-desc">Use host <code>{{ registry_host }}</code> with clients that pull from this application subdomain. Set <code>PUBLIC_REGISTRY_HOST</code> if you need a different advertised hostname.</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Management JSON API (replication &amp; metadata)</div>
-        <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
-        <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
-        <p class="endpoint-desc">REST helpers (e.g. <code>POST /api/v1/import</code>). Not the OCI registry protocol — use <code>/v2/</code> for container images.</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Health</div>
-        <code class="endpoint-url" id="url-health">{{ health_url }}</code>
-        <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
-      </div>
-
-      {% if local_auth_enabled %}
-      <p class="endpoint-desc"><strong>Registry authentication:</strong> HTTP Basic — username <code>{{ local_registry_username }}</code> (password from <code>LOCAL_REGISTRY_PASSWORD</code>). Required for <code>/v2/</code> and read-only catalog API routes when enabled.</p>
-      {% else %}
-      <p class="endpoint-desc"><strong>Registry authentication:</strong> not enabled. Set <code>LOCAL_REGISTRY_USERNAME</code> and <code>LOCAL_REGISTRY_PASSWORD</code> to protect <code>/v2/</code>.</p>
-      {% endif %}
-
-      <div class="endpoint">
-        <div class="endpoint-title">Push from Docker (laptop or CI)</div>
-        <code class="endpoint-url">docker login {{ registry_host }}</code>
-        <p class="endpoint-desc">Then <code>docker tag &lt;image&gt; {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> and <code>docker push</code> the same reference. Uploads use <code>/v2/.../blobs/uploads/</code> on this host.</p>
-      </div>
-
-      <div class="endpoint">
-        <div class="endpoint-title">Cloudera Runtime Catalog (Registry of Docker Image to Upload)</div>
-        <p class="endpoint-desc">Use a Docker image reference — <strong>no</strong> <code>https://</code>, <strong>no</strong> <code>/repo:tag</code> web path. Pattern:</p>
-        <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
-        <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code>. Cloudera validates via <code>GET https://{{ registry_host }}/v2/</code> and manifest under <code>/v2/&lt;repository&gt;/manifests/&lt;tag&gt;</code>.</p>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Replicate from a remote repository</h2>
-      <p class="hint">Import images from Cloudera or another OCI registry into this project-local private registry.</p>
-      <form id="replicateForm">
-        <label for="source">Remote image or repository</label>
-        <input id="source" name="source" type="text" required
-          placeholder="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8" />
-
-        <div class="row">
-          <div>
-            <label for="target_repo">Local repository name</label>
-            <input id="target_repo" name="target_repo" type="text"
-              placeholder="cloudera/ml-runtime-jupyterlab-python3.10-standard" />
-            <p class="hint">Leave blank to keep the same path as the remote repository.</p>
+        <details class="endpoint" open>
+          <summary>Registry API base</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
+            <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
+            <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>).</p>
           </div>
-          <div>
-            <label for="target_tag">Local tag (single-tag mode)</label>
-            <input id="target_tag" name="target_tag" type="text" placeholder="2023.08.2-b8" />
-            <p class="hint">Ignored when replicating all tags.</p>
-          </div>
-        </div>
+        </details>
 
-        <div class="checkbox">
-          <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
-          <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
-        </div>
-
-        <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
-        <div class="row">
-          <div>
-            <label for="remote_username">Username</label>
-            <input id="remote_username" name="remote_username" type="text" autocomplete="username" />
+        <details class="endpoint">
+          <summary>Catalog</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
+            <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
           </div>
-          <div>
-            <label for="remote_password">Password or token</label>
-            <input id="remote_password" name="remote_password" type="password" autocomplete="current-password" />
-          </div>
-        </div>
-        <label for="remote_token">Bearer token (optional, instead of username/password)</label>
-        <input id="remote_token" name="remote_token" type="password" autocomplete="off" />
+        </details>
 
-        {% if app_api_key_required %}
-        <label for="app_api_key">Admin API key</label>
-        <input id="app_api_key" name="app_api_key" type="password" required />
-        <p class="hint">Set via <code>APP_API_KEY</code> in the application environment.</p>
+        <details class="endpoint">
+          <summary>Example manifest URL</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
+            <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
+            <p class="endpoint-desc">Asset browser: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code></p>
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Image reference</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
+            <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Management JSON API</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
+            <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Health</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url" id="url-health">{{ health_url }}</code>
+            <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Authentication</summary>
+          <div class="endpoint-body">
+            {% if local_auth_enabled %}
+            <p class="endpoint-desc">HTTP Basic — username <code>{{ local_registry_username }}</code> (<code>LOCAL_REGISTRY_PASSWORD</code>).</p>
+            {% else %}
+            <p class="endpoint-desc">Not enabled. Set <code>LOCAL_REGISTRY_*</code> to protect <code>/v2/</code>.</p>
+            {% endif %}
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Push from Docker</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url">docker login {{ registry_host }}</code>
+            <p class="endpoint-desc"><code>docker tag</code> / <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code></p>
+          </div>
+        </details>
+
+        <details class="endpoint">
+          <summary>Cloudera Runtime Catalog</summary>
+          <div class="endpoint-body">
+            <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
+            <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code> — no <code>https://</code></p>
+          </div>
+        </details>
+      </div>
+    </details>
+
+    <details class="panel" open>
+      <summary>Replicate from a remote repository</summary>
+      <div class="panel-body">
+        <p class="hint">Import images from Cloudera or another OCI registry into this project-local private registry.</p>
+        <form id="replicateForm">
+          <label for="source">Remote image or repository</label>
+          <input id="source" name="source" type="text" required
+            placeholder="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8" />
+
+          <div class="row">
+            <div>
+              <label for="target_repo">Local repository name</label>
+              <input id="target_repo" name="target_repo" type="text"
+                placeholder="cloudera/ml-runtime-jupyterlab-python3.10-standard" />
+              <p class="hint">Leave blank to keep the same path as the remote repository.</p>
+            </div>
+            <div>
+              <label for="target_tag">Local tag (single-tag mode)</label>
+              <input id="target_tag" name="target_tag" type="text" placeholder="2023.08.2-b8" />
+              <p class="hint">Ignored when replicating all tags.</p>
+            </div>
+          </div>
+
+          <div class="checkbox">
+            <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
+            <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
+          </div>
+
+          <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
+          <div class="row">
+            <div>
+              <label for="remote_username">Username</label>
+              <input id="remote_username" name="remote_username" type="text" autocomplete="username" />
+            </div>
+            <div>
+              <label for="remote_password">Password or token</label>
+              <input id="remote_password" name="remote_password" type="password" autocomplete="current-password" />
+            </div>
+          </div>
+          <label for="remote_token">Bearer token (optional, instead of username/password)</label>
+          <input id="remote_token" name="remote_token" type="password" autocomplete="off" />
+
+          {% if app_api_key_required %}
+          <label for="app_api_key">Admin API key</label>
+          <input id="app_api_key" name="app_api_key" type="password" required />
+          <p class="hint">Set via <code>APP_API_KEY</code> in the application environment.</p>
+          {% endif %}
+
+          <button type="submit" id="submitBtn">Start replication</button>
+          <div id="jobStatus"></div>
+        </form>
+      </div>
+    </details>
+
+    <details class="panel">
+      <summary>Repository names</summary>
+      <div class="panel-body">
+        <p class="hint">Use many repositories (<code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>, etc.). Metadata under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>; blobs shared under <code>.../blobs/sha256/</code>.</p>
+        <p class="hint">Rename: <code>POST /api/v1/repositories/local-repo/rename</code> with <code>{ "new_name": "runtimes" }</code></p>
+      </div>
+    </details>
+
+    <details class="panel" open>
+      <summary>Local repositories</summary>
+      <div class="panel-body">
+        {% if repositories %}
+        <table>
+          <thead><tr><th>Repository</th><th>Tags</th></tr></thead>
+          <tbody>
+            {% for repo in repositories %}
+            <tr>
+              <td><code>{{ repo.name }}</code></td>
+              <td>{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="hint">No repositories yet. Replicate or push an image to populate storage.</p>
         {% endif %}
+      </div>
+    </details>
 
-        <button type="submit" id="submitBtn">Start replication</button>
-        <div id="jobStatus"></div>
-      </form>
-    </div>
-
-    <div class="card">
-      <h2>Repository names</h2>
-      <p class="hint"><code>local-repo</code> is only an example. You can use many repositories in one registry, including nested paths such as <code>runtimes</code>, <code>models</code>, or <code>runtimes/jupyter</code>. Push or replicate to any valid name; each gets its own folder under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>. Layer blobs are shared under <code>.../blobs/sha256/</code>.</p>
-      <p class="hint">To rename a repository (metadata only, blobs unchanged): <code>POST /api/v1/repositories/local-repo/rename</code> with JSON <code>{ "new_name": "runtimes" }</code> and header <code>X-API-Key</code> when <code>APP_API_KEY</code> is set.</p>
-    </div>
-
-    <div class="card">
-      <h2>Local repositories</h2>
-      {% if repositories %}
-      <table>
-        <thead><tr><th>Repository</th><th>Tags</th></tr></thead>
-        <tbody>
-          {% for repo in repositories %}
-          <tr>
-            <td><code>{{ repo.name }}</code></td>
-            <td>{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="hint">No repositories yet. Replicate a remote image to populate local storage under <code>{{ data_dir }}</code>.</p>
-      {% endif %}
-    </div>
-
-    <div class="card">
-      <h2>Recent replication jobs</h2>
-      {% if jobs %}
-      <table>
-        <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
-        <tbody>
-          {% for job in jobs %}
-          <tr>
-            <td class="status {{ job.status }}">{{ job.status }}</td>
-            <td><code>{{ job.source }}</code></td>
-            <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
-            <td>{{ job.message }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="hint">No jobs yet.</p>
-      {% endif %}
-    </div>
+    <details class="panel">
+      <summary>Recent replication jobs</summary>
+      <div class="panel-body">
+        {% if jobs %}
+        <table>
+          <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
+          <tbody>
+            {% for job in jobs %}
+            <tr>
+              <td class="status {{ job.status }}">{{ job.status }}</td>
+              <td><code>{{ job.source }}</code></td>
+              <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
+              <td>{{ job.message }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="hint">No jobs yet.</p>
+        {% endif %}
+      </div>
+    </details>
   </div>
 
   <script>

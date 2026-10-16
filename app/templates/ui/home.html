@@ -79,8 +79,44 @@
   .action-card p { margin: 0; font-size: 13px; line-height: 1.45; color: #5c6570; }
   .action-card .go { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--accent); }
 
-  .overview-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 900px) { .overview-split { grid-template-columns: 1fr; } }
+  .page-overview .app-shell { min-height: 100vh; height: 100vh; overflow: hidden; }
+  .page-overview .main {
+    display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+    padding-bottom: 24px;
+  }
+  .page-overview .page-content {
+    flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  }
+  .overview-hero,
+  .overview-metrics,
+  .overview-actions { flex-shrink: 0; }
+
+  .overview-split {
+    flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    align-items: stretch; margin-bottom: 0;
+  }
+  @media (max-width: 900px) {
+    .overview-split { grid-template-columns: 1fr; }
+    .page-overview .app-shell { height: auto; min-height: 100vh; overflow: visible; }
+    .page-overview .main { overflow-y: auto; }
+    .page-overview .page-content { overflow: visible; }
+    .overview-split { flex: none; max-height: none; }
+  }
+  .overview-panel {
+    display: flex; flex-direction: column; min-height: 0; height: 100%; overflow: hidden;
+    margin-top: 0 !important;
+  }
+  .overview-panel-header { flex-shrink: 0; }
+  .overview-panel-header h2 { margin: 0 0 6px; font-size: 1rem; font-weight: 700; }
+  .overview-panel-header .hint { margin: 0 0 12px; }
+  .overview-panel-body {
+    flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .overview-panel-footer {
+    flex-shrink: 0; margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf0f3;
+  }
+  .overview-panel-footer .hint { margin: 0; }
   .overview-split h2 { margin: 0 0 14px; font-size: 1rem; font-weight: 700; }
   .repo-chip-list { list-style: none; margin: 0; padding: 0; }
   .repo-chip-list li {
@@ -159,36 +195,48 @@
 </div>
 
 <div class="overview-split">
-  <div class="card">
-    <h2>Recent repositories</h2>
+  <div class="card overview-panel">
+    <div class="overview-panel-header">
+      <h2>Recent repositories</h2>
+    </div>
+    <div class="overview-panel-body">
+      {% if repositories %}
+      <ul class="repo-chip-list">
+        {% for repo in repositories[:6] %}
+        <li>
+          <span><code>{{ repo.name }}</code></span>
+          <span class="hint">{{ repo.tags|length }} tag{% if repo.tags|length != 1 %}s{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="empty-state">No images yet — <a href="/ui/replicate">replicate from remote</a> or push with docker.</p>
+      {% endif %}
+    </div>
     {% if repositories %}
-    <ul class="repo-chip-list">
-      {% for repo in repositories[:6] %}
-      <li>
-        <span><code>{{ repo.name }}</code></span>
-        <span class="hint">{{ repo.tags|length }} tag{% if repo.tags|length != 1 %}s{% endif %}</span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% if repositories|length > 6 %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/repositories">View all {{ repositories|length }} repositories</a></p>
-    {% endif %}
-    {% else %}
-    <p class="empty-state">No images yet — <a href="/ui/replicate">replicate from remote</a> or push with docker.</p>
+    <div class="overview-panel-footer">
+      {% if repositories|length > 6 %}
+      <p class="hint"><a href="/ui/repositories">View all {{ repositories|length }} repositories</a></p>
+      {% else %}
+      <p class="hint"><a href="/ui/repositories">Manage repositories</a></p>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
-  <div class="card">
-    <h2>Registry activity</h2>
-    <p class="hint" style="margin:0 0 12px;">Audit of pushes, pulls, replications, renames, and repository admin changes.</p>
-    {{ activity_rows(activity, 8) }}
-    {% if activity|length > 8 %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/audit">Full audit log</a></p>
-    {% elif activity %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/audit">Registry audit</a></p>
-    {% endif %}
-    {% if overview.activity_ok or overview.activity_fail %}
-    <p class="hint" style="margin-top:12px;">{{ overview.activity_ok }} succeeded · {{ overview.activity_fail }} failed (recent window)</p>
-    {% endif %}
+  <div class="card overview-panel">
+    <div class="overview-panel-header">
+      <h2>Registry activity</h2>
+      <p class="hint">Latest five events — pushes, pulls, replications, and admin changes.</p>
+    </div>
+    <div class="overview-panel-body overview-activity-scroll">
+      {{ activity_rows(activity, 5) }}
+    </div>
+    <div class="overview-panel-footer">
+      <p class="hint"><a href="/ui/audit">Full audit log</a></p>
+      {% if overview.activity_ok or overview.activity_fail %}
+      <p class="hint" style="margin-top:8px;">{{ overview.activity_ok }} succeeded · {{ overview.activity_fail }} failed (shown above)</p>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

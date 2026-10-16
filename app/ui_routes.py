@@ -213,7 +213,7 @@ def manage_ui_home(
     importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    activity = _activity_for_ui(settings, limit=50)
+    activity = _activity_for_ui(settings, limit=5)
     registry_host = settings.public_registry_host or request.url.netloc
     repos = _list_repos(storage, registry_host)
     storage_stats = storage.stats()

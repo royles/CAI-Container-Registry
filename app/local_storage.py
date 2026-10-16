@@ -135,15 +135,50 @@ class LocalRegistryStorage:
         return sorted(found)
 
     def list_tags(self, repo: str) -> list[str]:
+        """Tag names from per-tag current links and the tags/index reverse map."""
         self.validate_repo_name(repo)
         tags_dir = self._repo_dir(repo) / "_manifests" / "tags"
         if not tags_dir.is_dir():
             return []
-        tags: list[str] = []
+        found: set[str] = set()
         for entry in tags_dir.iterdir():
-            if entry.is_dir() and entry.name not in ("index",) and (entry / "current").is_file():
-                tags.append(entry.name)
-        return sorted(tags)
+            if not entry.is_dir() or entry.name == "index":
+                continue
+            if (entry / "current").is_file():
+                found.add(entry.name)
+                continue
+            # Some layouts store the digest in a "link" file instead of "current"
+            if (entry / "link").is_file():
+                found.add(entry.name)
+        index_dir = tags_dir / "index" / "sha256"
+        if index_dir.is_dir():
+            for index_file in index_dir.iterdir():
+                if not index_file.is_file():
+                    continue
+                try:
+                    tag_name = index_file.read_text(encoding="utf-8").strip()
+                except OSError:
+                    continue
+                if tag_name:
+                    found.add(tag_name)
+        return sorted(found)
+
+    def list_manifest_revision_digests(self, repo: str) -> list[str]:
+        """Manifest digests linked under _manifests/revisions/sha256/."""
+        self.validate_repo_name(repo)
+        rev_root = self._repo_dir(repo) / "_manifests" / "revisions" / "sha256"
+        if not rev_root.is_dir():
+            return []
+        digests: list[str] = []
+        for entry in sorted(rev_root.iterdir()):
+            if not entry.is_dir():
+                continue
+            link = entry / "link"
+            if link.is_file():
+                digests.append(link.read_text(encoding="utf-8").strip())
+            else:
+                digests.append(f"sha256:{entry.name}")
+        return digests
 
     def resolve_tag(self, repo: str, reference: str) -> tuple[str, bytes]:
         self.validate_repo_name(repo)
@@ -152,10 +187,25 @@ class LocalRegistryStorage:
             data = self.read_blob(digest)
             return digest, data
         tag_path = self._tag_current_path(repo, reference)
-        if not tag_path.is_file():
-            raise FileNotFoundError(reference)
-        digest = tag_path.read_text(encoding="utf-8").strip()
-        return digest, self.read_blob(digest)
+        if tag_path.is_file():
+            digest = tag_path.read_text(encoding="utf-8").strip()
+            return digest, self.read_blob(digest)
+        link_path = tag_path.parent / "link"
+        if link_path.is_file():
+            digest = link_path.read_text(encoding="utf-8").strip()
+            return digest, self.read_blob(digest)
+        index_dir = self._repo_dir(repo) / "_manifests" / "tags" / "index" / "sha256"
+        if index_dir.is_dir():
+            for index_file in index_dir.iterdir():
+                if not index_file.is_file():
+                    continue
+                try:
+                    if index_file.read_text(encoding="utf-8").strip() == reference:
+                        digest = f"sha256:{index_file.name}"
+                        return digest, self.read_blob(digest)
+                except OSError:
+                    continue
+        raise FileNotFoundError(reference)
 
     def delete_tag(self, repo: str, tag: str) -> None:
         self.validate_repo_name(repo)

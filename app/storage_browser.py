@@ -147,8 +147,11 @@ def _split_repo_path(storage: LocalRegistryStorage, parts: list[str]) -> tuple[s
         try:
             storage.validate_repo_name(candidate)
             repo_dir = storage._repo_dir(candidate)
-            if repo_dir.is_dir() or (i == len(rest)):
-                return candidate, tail
+            if not repo_dir.is_dir():
+                continue
+            if not (repo_dir / "_manifests").is_dir():
+                continue
+            return candidate, tail
         except ValueError:
             continue
     raise ValueError("Repository not found")
@@ -161,27 +164,45 @@ def _browse_repo_home(storage: LocalRegistryStorage, repo: str) -> BrowseResult:
         _crumb("repositories", "repositories"),
         _crumb(repo, base),
     ]
-    entries = [
-        BrowseEntry("tags", "folder", f"{base}/tags", detail="Named tags → manifest digests"),
+    tags = storage.list_tags(repo)
+    revisions = storage.list_manifest_revision_digests(repo)
+    entries: list[BrowseEntry] = [
+        BrowseEntry(
+            "tags",
+            "folder",
+            f"{base}/tags",
+            detail=f"{len(tags)} tag(s)" if tags else "Named tags → manifest digests",
+        ),
         BrowseEntry(
             "revisions",
             "folder",
             f"{base}/revisions",
-            detail="Manifest revisions by digest",
+            detail=f"{len(revisions)} manifest revision(s)" if revisions else "Manifest revisions by digest",
+        ),
+        BrowseEntry(
+            "_manifests",
+            "folder",
+            f"{base}/_manifests",
+            detail="On-disk _manifests tree (same as tags / revisions)",
         ),
     ]
-    rel = storage._repo_dir(repo)
-    if rel.is_dir():
-        for name in sorted(p.name for p in rel.iterdir() if p.is_dir() and p.name != "_manifests"):
-            entries.append(
-                BrowseEntry(
-                    name,
-                    "folder",
-                    f"{base}/{name}",
-                    detail="Intermediate repository path segment",
-                )
+    for tag in tags:
+        entries.append(
+            BrowseEntry(
+                tag,
+                "tag",
+                f"{base}/tags/{tag}",
+                href=f"/repos/{repo}/tags/{tag}",
+                detail="Tag",
             )
-    return BrowseResult(path=base, title=repo, breadcrumbs=crumbs, entries=entries)
+        )
+    note = None
+    if not tags and revisions:
+        note = (
+            f"No named tags found on disk, but {len(revisions)} manifest revision(s) exist. "
+            "Open revisions or check tags/index under _manifests."
+        )
+    return BrowseResult(path=base, title=repo, breadcrumbs=crumbs, entries=entries, note=note)
 
 
 def _browse_repo_tags(storage: LocalRegistryStorage, repo: str) -> BrowseResult:
@@ -193,7 +214,8 @@ def _browse_repo_tags(storage: LocalRegistryStorage, repo: str) -> BrowseResult:
         _crumb("tags", base),
     ]
     entries: list[BrowseEntry] = []
-    for tag in storage.list_tags(repo):
+    tags = storage.list_tags(repo)
+    for tag in tags:
         entries.append(
             BrowseEntry(
                 tag,
@@ -203,9 +225,33 @@ def _browse_repo_tags(storage: LocalRegistryStorage, repo: str) -> BrowseResult:
                 detail="Tag",
             )
         )
-    if not entries:
-        entries.append(BrowseEntry("(no tags)", "folder", base, detail="Empty tag list"))
-    return BrowseResult(path=base, title=f"{repo} — tags", breadcrumbs=crumbs, entries=entries)
+    note = None
+    if not tags:
+        revisions = storage.list_manifest_revision_digests(repo)
+        if revisions:
+            note = (
+                f"No tag folders under _manifests/tags, but {len(revisions)} manifest revision(s) exist. "
+                f"Open the revisions folder from the repository home page."
+            )
+            for digest in revisions[:20]:
+                hex_part = digest.removeprefix("sha256:")
+                entries.append(
+                    BrowseEntry(
+                        digest[:19] + "…",
+                        "blob",
+                        f"repositories/{repo}/revisions/sha256/{hex_part}",
+                        detail=digest,
+                    )
+                )
+        else:
+            entries.append(BrowseEntry("(no tags)", "folder", base, detail="Empty tag list"))
+    return BrowseResult(
+        path=base,
+        title=f"{repo} — tags",
+        breadcrumbs=crumbs,
+        entries=entries,
+        note=note,
+    )
 
 
 def _browse_repo_tag(storage: LocalRegistryStorage, repo: str, tag: str) -> BrowseResult:
@@ -281,7 +327,6 @@ def _browse_tag_index(storage: LocalRegistryStorage, repo: str, tag: str) -> Bro
 
 def _browse_repo_revisions(storage: LocalRegistryStorage, repo: str) -> BrowseResult:
     base = f"repositories/{repo}/revisions"
-    rev_root = storage._repo_dir(repo) / "_manifests" / "revisions" / "sha256"
     crumbs = [
         _crumb("Registry storage", ""),
         _crumb("repositories", "repositories"),
@@ -289,17 +334,16 @@ def _browse_repo_revisions(storage: LocalRegistryStorage, repo: str) -> BrowseRe
         _crumb("revisions", base),
     ]
     entries: list[BrowseEntry] = []
-    if rev_root.is_dir():
-        for digest_dir in sorted(rev_root.iterdir()):
-            if digest_dir.is_dir():
-                entries.append(
-                    BrowseEntry(
-                        digest_dir.name,
-                        "folder",
-                        f"{base}/sha256/{digest_dir.name}",
-                        detail="Manifest revision",
-                    )
-                )
+    for digest in storage.list_manifest_revision_digests(repo):
+        hex_part = digest.removeprefix("sha256:")
+        entries.append(
+            BrowseEntry(
+                hex_part[:16] + "…" if len(hex_part) > 16 else hex_part,
+                "folder",
+                f"{base}/sha256/{hex_part}",
+                detail=digest,
+            )
+        )
     if not entries:
         entries.append(BrowseEntry("(none)", "folder", base, detail="No manifest revisions"))
     return BrowseResult(path=base, title=f"{repo} — revisions", breadcrumbs=crumbs, entries=entries)
@@ -470,6 +514,10 @@ def browse_storage(storage: LocalRegistryStorage, raw_path: str | None) -> Brows
         repo, tail = _split_repo_path(storage, parts)
         if not tail:
             return _browse_repo_home(storage, repo)
+        if tail[0] == "_manifests":
+            tail = tail[1:]
+            if not tail:
+                return _browse_repo_home(storage, repo)
         if tail[0] == "tags":
             if len(tail) == 1:
                 return _browse_repo_tags(storage, repo)

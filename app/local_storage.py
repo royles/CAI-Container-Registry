@@ -133,6 +133,42 @@ class LocalRegistryStorage:
         if tag_path.is_file():
             tag_path.unlink()
 
+    def describe_image(self, repo: str, tag: str) -> dict:
+        """Human-readable summary of where an image's metadata and blobs are stored."""
+        from app.remote_client import manifest_blob_digests
+
+        digest, manifest_bytes = self.resolve_tag(repo, tag)
+        manifest_path = self.blob_path(digest)
+        try:
+            manifest_json = json.loads(manifest_bytes.decode("utf-8"))
+            media_type = manifest_json.get(
+                "mediaType", "application/vnd.docker.distribution.manifest.v2+json"
+            )
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            media_type = "application/vnd.docker.distribution.manifest.v2+json"
+
+        blobs: list[dict] = []
+        for blob_digest in manifest_blob_digests(manifest_bytes, media_type):
+            blob_file = self.blob_path(blob_digest)
+            entry: dict = {
+                "digest": blob_digest,
+                "relative_path": str(blob_file.relative_to(self.root)),
+            }
+            if blob_file.is_file():
+                entry["size_bytes"] = blob_file.stat().st_size
+            blobs.append(entry)
+
+        tag_link = self._tag_current_path(repo, tag)
+        return {
+            "repository": repo,
+            "tag": tag,
+            "manifest_digest": digest,
+            "manifest_relative_path": str(manifest_path.relative_to(self.root)),
+            "tag_link_relative_path": str(tag_link.relative_to(self.root)),
+            "repo_metadata_relative_path": str(self._repo_dir(repo).relative_to(self.root)),
+            "blobs": blobs,
+        }
+
     def stats(self) -> dict:
         blob_count = sum(1 for _ in self._blobs.rglob("data")) if self._blobs.is_dir() else 0
         total_bytes = sum(p.stat().st_size for p in self._blobs.rglob("data")) if self._blobs.is_dir() else 0

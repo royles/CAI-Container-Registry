@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ repository }}:{{ tag }} — CAI Private Registry</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #1a1a1a; background: #f6f7f9; }
+    body { margin: 0; padding: 24px; }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    a { color: #0b5fff; }
+    .card { background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    code { background: #eef1f5; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+    .hint { color: #5c6570; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #edf0f3; vertical-align: top; }
+    .callout { background: #fff8e6; border: 1px solid #f5d98a; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p><a href="/">← Back to registry console</a></p>
+    <h1><code>{{ repository }}:{{ tag }}</code></h1>
+
+    <div class="callout">
+      Container images are <strong>not</strong> served as web pages at <code>/{{ repository }}:{{ tag }}</code>.
+      Clients use the <strong>Registry HTTP API</strong> below. Layer and manifest bytes live on disk under
+      <code>{{ data_dir }}/</code> (deduplicated blob store).
+    </div>
+
+    <div class="card">
+      <h2>Registry API (how clients access this image)</h2>
+      <ul>
+        <li>Manifest: <code>{{ manifest_url }}</code></li>
+        <li>Tags list: <code>{{ tags_list_url }}</code></li>
+        <li>Image reference: <code>{{ image_ref }}</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>On-disk assets (project storage)</h2>
+      <p class="hint">Root: <code>{{ data_dir }}</code></p>
+      <table>
+        <tr><th>Role</th><th>Path (relative to registry root)</th></tr>
+        <tr><td>Repository metadata</td><td><code>{{ detail.repo_metadata_relative_path }}/</code></td></tr>
+        <tr><td>Tag pointer</td><td><code>{{ detail.tag_link_relative_path }}</code></td></tr>
+        <tr><td>Manifest blob</td><td><code>{{ detail.manifest_relative_path }}</code> (<code>{{ detail.manifest_digest }}</code>)</td></tr>
+      </table>
+      <h3>Layers &amp; config blobs</h3>
+      {% if detail.blobs %}
+      <table>
+        <thead><tr><th>Digest</th><th>File</th><th>Size</th></tr></thead>
+        <tbody>
+          {% for b in detail.blobs %}
+          <tr>
+            <td><code>{{ b.digest }}</code></td>
+            <td><code>{{ b.relative_path }}</code></td>
+            <td>{% if b.size_bytes is defined %}{{ b.size_bytes }} bytes{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="hint">No blobs recorded for this manifest.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

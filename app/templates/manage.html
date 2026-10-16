@@ -95,7 +95,8 @@
         <div class="endpoint-title">Example manifest URL</div>
         <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
         <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
-        <p class="endpoint-desc">Pattern: <code>{{ registry_v2_url }}&lt;repository&gt;/manifests/&lt;tag-or-digest&gt;</code></p>
+        <p class="endpoint-desc">Pattern: <code>{{ registry_v2_url }}&lt;repository&gt;/manifests/&lt;tag-or-digest&gt;</code>.
+          Human-readable asset locations: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code> (not <code>/repo:tag</code>).</p>
       </div>
 
       <div class="endpoint">
@@ -186,7 +187,7 @@
           {% for repo in repositories %}
           <tr>
             <td><code>{{ repo.name }}</code></td>
-            <td>{% for t in repo.tags %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</td>
+            <td>{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}</td>
           </tr>
           {% endfor %}
         </tbody>

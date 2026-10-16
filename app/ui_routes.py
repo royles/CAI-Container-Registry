@@ -7,7 +7,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
@@ -140,3 +140,70 @@ def ui_job_status(
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return {"job": job.to_dict()}
+
+
+@router.get("/repos/{repository:path}/tags/{tag}", response_class=HTMLResponse)
+def repo_tag_detail(
+    repository: str,
+    tag: str,
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    try:
+        detail = storage.describe_image(repository, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Image {repository}:{tag} not found in local storage. "
+                "Use /v2/ for the registry API after replication completes."
+            ),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    base = str(request.base_url).rstrip("/")
+    registry_host = settings.public_registry_host or request.url.netloc
+    return templates.TemplateResponse(
+        request,
+        "repo_detail.html",
+        {
+            "repository": repository,
+            "tag": tag,
+            "detail": detail,
+            "data_dir": str(settings.registry_data_dir),
+            "manifest_url": f"{base}/v2/{repository}/manifests/{tag}",
+            "tags_list_url": f"{base}/v2/{repository}/tags/list",
+            "image_ref": f"{registry_host}/{repository}:{tag}",
+        },
+    )
+
+
+_RESERVED_ROOT_SEGMENTS = frozenset(
+    {
+        "api",
+        "v2",
+        "ui",
+        "health",
+        "repos",
+        "docs",
+        "redoc",
+        "openapi.json",
+        "favicon.ico",
+    }
+)
+
+
+@router.get("/{image_ref}")
+def image_ref_shortcut(image_ref: str) -> RedirectResponse:
+    """
+    Convenience redirect: /local-repo:v1 → /repos/local-repo/tags/v1
+    (OCI images are served under /v2/, not as HTML at the repo:tag path.)
+    """
+    if image_ref in _RESERVED_ROOT_SEGMENTS or "/" in image_ref or ":" not in image_ref:
+        raise HTTPException(status_code=404, detail="Not Found")
+    repository, tag = image_ref.rsplit(":", 1)
+    if not repository or not tag:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return RedirectResponse(url=f"/repos/{repository}/tags/{tag}", status_code=302)

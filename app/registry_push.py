@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from app.auth import require_local_registry_auth
 from app.config import Settings, get_settings
 from app.local_storage import LocalRegistryStorage
+from app.request_urls import external_base_url
 from app.upload_store import BlobUploadStore
 
 router = APIRouter(prefix="/v2", tags=["registry-push"])
@@ -28,12 +29,12 @@ def _registry_headers() -> dict[str, str]:
 
 
 def _upload_location(request: Request, repository: str, upload_id: str) -> str:
-    base = str(request.base_url).rstrip("/")
+    base = external_base_url(request)
     return f"{base}/v2/{repository}/blobs/uploads/{upload_id}"
 
 
 def _blob_location(request: Request, repository: str, digest: str) -> str:
-    base = str(request.base_url).rstrip("/")
+    base = external_base_url(request)
     return f"{base}/v2/{repository}/blobs/{digest}"
 
 
@@ -64,6 +65,7 @@ async def _commit_blob(
     storage.write_blob(digest, data)
 
 
+@router.post("/{name:path}/blobs/uploads")
 @router.post("/{name:path}/blobs/uploads/")
 async def initiate_upload(
     name: str,
@@ -167,6 +169,7 @@ async def complete_upload(
     return Response(status_code=201, headers=headers)
 
 
+@router.put("/{name:path}/blobs/uploads")
 @router.put("/{name:path}/blobs/uploads/")
 async def monolithic_upload(
     name: str,
@@ -209,7 +212,7 @@ async def put_manifest(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    location = f"{str(request.base_url).rstrip('/')}/v2/{name}/manifests/{digest}"
+    location = f"{external_base_url(request)}/v2/{name}/manifests/{digest}"
     headers = {
         **_registry_headers(),
         "Location": location,

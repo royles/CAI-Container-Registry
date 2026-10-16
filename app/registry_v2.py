@@ -92,6 +92,8 @@ async def get_blob(
     _: None = Depends(require_local_registry_auth),
 ) -> Response:
     _ = name
+    if digest == "uploads" or digest.startswith("uploads/"):
+        raise HTTPException(status_code=404, detail="blob unknown")
     try:
         data = storage.read_blob(digest)
     except FileNotFoundError as exc:

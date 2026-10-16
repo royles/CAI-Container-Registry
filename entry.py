@@ -32,6 +32,8 @@ async def _serve_async() -> None:
         host="127.0.0.1",
         port=port,
         log_level=os.environ.get("LOG_LEVEL", "info").lower(),
+        proxy_headers=True,
+        forwarded_allow_ips="*",
     )
     server = uvicorn.Server(config)
     await server.serve()

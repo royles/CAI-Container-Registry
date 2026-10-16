@@ -16,7 +16,7 @@ from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
-from app.image_refs import build_client_pull_refs
+from app.image_refs import build_client_pull_refs, ensure_version_tag_alias_for_tag, probe_registry_tag
 from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
@@ -114,15 +114,19 @@ def runtime_catalog_diagnostics(
         repository,
         tag,
         metadata.get("runtime_summary") if metadata.get("ok") else None,
+        storage=storage,
     )
-    version_tag = pull_refs["version_tag"]
+    version_tag = str(pull_refs["version_tag"])
+    client_tag = pull_refs["client_pull_ref"].rsplit(":", 1)[-1]
     return {
         "image_reference_for_runtime_catalog": pull_refs["client_pull_ref"],
         "image_reference_registry_tag": pull_refs["registry_ref"],
         "pull_refs": pull_refs,
         "registry_ping_url": f"https://{host}/v2/",
         "manifest_url": f"https://{host}/v2/{repository}/manifests/{tag}",
-        "manifest_url_for_client_pull": f"https://{host}/v2/{repository}/manifests/{version_tag}",
+        "manifest_url_for_client_pull": f"https://{host}/v2/{repository}/manifests/{client_tag}",
+        "manifest_probe_registry_tag": probe_registry_tag(storage, repository, tag),
+        "manifest_probe_client_tag": probe_registry_tag(storage, repository, client_tag),
         "local_auth_enabled": settings.local_auth_enabled,
         "local_registry_public_read": settings.local_registry_public_read,
         "runtime_catalog_checks": {

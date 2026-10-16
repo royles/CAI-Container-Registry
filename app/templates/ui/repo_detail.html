@@ -10,8 +10,15 @@
 <div class="card">
   <h2 style="margin-top:0;font-size:1.05rem;">Client pull &amp; Runtime Catalog</h2>
   <p class="hint" style="margin-top:0;">Use this reference for <code>docker pull</code> and Runtime Catalog (no <code>https://</code>):</p>
+  {% if pull_refs.catalog_warning %}
+  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>Runtime Catalog:</strong> {{ pull_refs.catalog_warning }}</p>
+  {% endif %}
   <p style="margin:8px 0;"><code id="runtime-catalog-ref" class="image-ref">{{ pull_refs.client_pull_ref }}</code>
     <button type="button" class="copy-ref-btn" data-copy-text="{{ pull_refs.client_pull_ref }}">Copy</button></p>
+  {% if pull_refs.version_tag != pull_refs.registry_tag and not pull_refs.version_tag_exists %}
+  <p class="hint"><button type="button" class="btn-inline btn-secondary" id="ensureVersionTagBtn">Create version tag <code>{{ pull_refs.version_tag }}</code></button>
+    (same manifest as <code>{{ pull_refs.registry_tag }}</code>)</p>
+  {% endif %}
   {% if pull_refs.version_tag != pull_refs.registry_tag %}
   <p class="hint">Registry tag on disk: <code>{{ pull_refs.registry_tag }}</code> · version tag for clients: <code>{{ pull_refs.version_tag }}</code>
     (alias created when you save runtime labels). Root shortcuts:
@@ -136,9 +143,9 @@
     runtimeStatus.textContent = text;
     runtimeStatus.classList.toggle("error", !!isError);
   }
-  function repoTagPathUrl(base, repo, tag) {
+  function repoTagPathUrl(base, repo, tag, action) {
     const repoEnc = repo.split("/").map(encodeURIComponent).join("/");
-    return `${base}/${repoEnc}/tags/${encodeURIComponent(tag)}/runtime-labels`;
+    return `${base}/${repoEnc}/tags/${encodeURIComponent(tag)}/${action}`;
   }
   function refreshFullHint() {
     const shortV = document.getElementById("short_version").value.trim();
@@ -156,6 +163,31 @@
   });
   refreshFullHint();
 
+  const ensureBtn = document.getElementById("ensureVersionTagBtn");
+  if (ensureBtn) {
+    ensureBtn.addEventListener("click", async () => {
+      ensureBtn.disabled = true;
+      showRuntimeStatus("Creating version tag…", false);
+      try {
+        const payload = {};
+        {% if app_api_key_required %}
+        payload.app_api_key = document.getElementById("runtime_labels_api_key")?.value || "";
+        {% endif %}
+        const res = await fetch(
+          repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}, "ensure-version-tag"),
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed");
+        showRuntimeStatus(`Version tag ${data.version_tag_alias || "—"} ready. Reloading…`, false);
+        setTimeout(() => location.reload(), 800);
+      } catch (err) {
+        showRuntimeStatus(err.message || String(err), true);
+        ensureBtn.disabled = false;
+      }
+    });
+  }
+
   runtimeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const payload = {
@@ -170,7 +202,7 @@
     showRuntimeStatus("Saving…", false);
     try {
       const res = await fetch(
-        repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}),
+        repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}, "runtime-labels"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata, runtime_label_summary
 from app.local_storage import LocalRegistryStorage
@@ -18,32 +19,100 @@ def docker_tag_safe(value: str) -> str | None:
     return v
 
 
+def probe_registry_tag(storage: LocalRegistryStorage, repository: str, tag: str) -> dict[str, Any]:
+    """Whether /v2/.../manifests/{tag} would resolve locally."""
+    try:
+        digest, _ = storage.resolve_tag(repository, tag)
+        return {"ok": True, "manifest_digest": digest}
+    except FileNotFoundError:
+        return {"ok": False, "error": f"Tag not found: {repository}:{tag}"}
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def build_client_pull_refs(
     registry_host: str,
     repository: str,
     registry_tag: str,
     runtime_summary: dict[str, str | None] | None = None,
-) -> dict[str, str]:
+    storage: LocalRegistryStorage | None = None,
+) -> dict[str, str | bool | None]:
     """
     Pull references for docker / Runtime Catalog (no https://).
 
-    When full_version is set, prefer host/repo:full_version as the catalog/client ref.
-    registry_tag remains the on-disk tag name (e.g. v5).
+    Recommends host/repo:full_version only when that tag exists in the registry
+    (created by saving runtime labels). Otherwise falls back to the registry tag.
     """
     host = registry_host.strip().rstrip("/")
     registry_ref = f"{host}/{repository}:{registry_tag}"
     full = (runtime_summary or {}).get("full_version") if runtime_summary else None
     version_tag = docker_tag_safe(full) if full else None
+    version_tag_exists = False
+    registry_tag_exists = False
+    if storage is not None:
+        tags = storage.list_tags(repository)
+        registry_tag_exists = registry_tag in tags
+        if version_tag:
+            version_tag_exists = version_tag in tags
+
     if version_tag and version_tag != registry_tag:
         version_ref = f"{host}/{repository}:{version_tag}"
     else:
         version_ref = registry_ref
+
+    if version_tag and version_tag != registry_tag and version_tag_exists:
+        client_pull_ref = version_ref
+        catalog_ready = True
+        catalog_warning = None
+    elif registry_tag_exists:
+        client_pull_ref = registry_ref
+        catalog_ready = True
+        if version_tag and version_tag != registry_tag and not version_tag_exists:
+            catalog_warning = (
+                f"Version tag '{version_tag}' is not in the registry yet. "
+                f"Save runtime labels on this image (or call ensure-version-tag) before using "
+                f"{version_ref} in Runtime Catalog. Until then use {registry_ref}."
+            )
+        else:
+            catalog_warning = None
+    else:
+        client_pull_ref = registry_ref
+        catalog_ready = False
+        catalog_warning = f"Registry tag '{registry_tag}' not found in storage."
+
     return {
         "registry_ref": registry_ref,
         "version_ref": version_ref,
-        "client_pull_ref": version_ref,
+        "client_pull_ref": client_pull_ref,
         "version_tag": version_tag or registry_tag,
         "registry_tag": registry_tag,
+        "version_tag_exists": version_tag_exists,
+        "registry_tag_exists": registry_tag_exists,
+        "catalog_ready": catalog_ready,
+        "catalog_warning": catalog_warning,
+    }
+
+
+def ensure_version_tag_alias_for_tag(
+    storage: LocalRegistryStorage,
+    repo: str,
+    source_tag: str,
+) -> dict[str, Any]:
+    """Create missing full_version alias tag pointing at source_tag's manifest."""
+    from app.cloudera_metadata import inspect_cloudera_runtime_metadata
+
+    meta = inspect_cloudera_runtime_metadata(storage, repo, source_tag)
+    full = (meta.get("runtime_summary") or {}).get("full_version")
+    digest, manifest_bytes = storage.resolve_tag(repo, source_tag)
+    alias = sync_version_tag_alias(storage, repo, source_tag, manifest_bytes, full)
+    probe_version = probe_registry_tag(storage, repo, alias) if alias else None
+    return {
+        "repository": repo,
+        "source_tag": source_tag,
+        "full_version": full,
+        "version_tag_alias": alias,
+        "manifest_digest": digest,
+        "version_tag_probe": probe_version,
     }
 
 
@@ -64,7 +133,9 @@ def tag_detail_with_refs(
         meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
     except (FileNotFoundError, ValueError):
         detail["runtime_missing"] = True
-        detail["pull_refs"] = build_client_pull_refs(registry_host, repo, tag, None)
+        detail["pull_refs"] = build_client_pull_refs(
+            registry_host, repo, tag, None, storage=storage
+        )
         return detail
     summary = meta.get("runtime_summary") or runtime_label_summary(meta.get("all_config_labels") or {})
     detail["runtime_summary"] = summary
@@ -73,7 +144,9 @@ def tag_detail_with_refs(
     detail["runtime_missing"] = meta.get("cloudera_labels_missing", True)
     detail["runtime_error"] = meta.get("error")
     detail["version_check"] = meta.get("version_check")
-    detail["pull_refs"] = build_client_pull_refs(registry_host, repo, tag, summary)
+    detail["pull_refs"] = build_client_pull_refs(
+        registry_host, repo, tag, summary, storage=storage
+    )
     return detail
 
 

@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field
 
 from app.audit_log import RegistryAuditStore, list_registry_activity, query_registry_activity
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata, runtime_label_summary
-from app.image_refs import build_client_pull_refs, find_images_by_version_tag, tag_detail_with_refs
+from app.image_refs import (
+    build_client_pull_refs,
+    ensure_version_tag_alias_for_tag,
+    find_images_by_version_tag,
+    tag_detail_with_refs,
+)
 from app.runtime_label_patch import patch_image_tag_runtime_labels, runtime_fields_from_labels
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
@@ -440,6 +445,32 @@ def ui_job_status(
     return {"job": job.to_dict()}
 
 
+@router.post("/ui/repositories/{repository:path}/tags/{tag}/ensure-version-tag")
+def ui_ensure_version_tag(
+    repository: str,
+    tag: str,
+    body: UIRepoMutation,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Create registry tag named full_version (for Runtime Catalog) if missing."""
+    _verify_ui_admin_key(body.app_api_key, settings)
+    try:
+        result = ensure_version_tag_alias_for_tag(storage, repository, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Image not found: {repository}:{tag}") from exc
+    host = settings.public_registry_host or "localhost"
+    meta = inspect_cloudera_runtime_metadata(storage, repository, tag)
+    result["pull_refs"] = build_client_pull_refs(
+        host,
+        repository,
+        tag,
+        meta.get("runtime_summary"),
+        storage=storage,
+    )
+    return result
+
+
 @router.post("/ui/repositories/{repository:path}/tags/{tag}/runtime-labels")
 def ui_patch_runtime_labels(
     repository: str,
@@ -506,6 +537,7 @@ def repo_tag_detail(
         repository,
         tag,
         cloudera_meta.get("runtime_summary"),
+        storage=storage,
     )
     return _render_ui_page(
         request,

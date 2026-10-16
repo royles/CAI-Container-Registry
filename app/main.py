@@ -58,11 +58,6 @@ def health(
     }
 
 
-@app.get("/")
-def root() -> dict:
-    return {"ui": "/ui", "health": "/health", "registry_api": "/v2/"}
-
-
 @app.get("/api/v1/repositories")
 def list_repositories(
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],

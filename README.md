@@ -16,7 +16,7 @@ Use the Python interpreter already provided by the CAI session or application en
 python3 entry.py
 ```
 
-`CDSW_APP_PORT` is set by the CAI session or application engine; do not override it. Open the application subdomain URL (or the session proxy URL) at `/ui`.
+`CDSW_APP_PORT` is set by the CAI session or application engine; do not override it. Open the application subdomain URL (the root path serves the management UI).
 
 ## Cloudera AI Application setup
 
@@ -33,7 +33,7 @@ python3 entry.py
 
 ## Replicate from Cloudera (UI)
 
-1. Open `https://<subdomain>.<your-cai-domain>/ui`
+1. Open `https://<subdomain>.<your-cai-domain>/`
 2. Enter the remote image, e.g.  
    `docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8`
 3. Provide remote username/password or token if the registry is private.

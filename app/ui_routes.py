@@ -63,12 +63,11 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
-@router.get("/ui", response_class=HTMLResponse)
-def manage_ui(
+def _render_manage_ui(
     request: Request,
-    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    importer: Annotated[ImageImporter, Depends(get_importer)],
-    settings: Annotated[Settings, Depends(get_settings)],
+    storage: LocalRegistryStorage,
+    importer: ImageImporter,
+    settings: Settings,
 ) -> HTMLResponse:
     repos = []
     for name in storage.list_repositories():
@@ -84,6 +83,17 @@ def manage_ui(
             "app_api_key_required": bool(settings.app_api_key),
         },
     )
+
+
+@router.get("/", response_class=HTMLResponse)
+@router.get("/ui", response_class=HTMLResponse)
+def manage_ui(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_manage_ui(request, storage, importer, settings)
 
 
 @router.post("/ui/replicate")

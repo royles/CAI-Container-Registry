@@ -5,16 +5,19 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 ## Features
 
 - Local registry at `/v2/` backed by `REGISTRY_DATA_DIR` (persist on project NFS in CAI)
-- Management UI at `/ui` — remote source, credentials, single-tag or all-tags replication
+- Management UI — separate pages under `/ui/…` (replicate, repositories, storage browser, jobs, API)
 - JSON API for automation (`/api/v1/import`, `/api/v1/repositories`, …)
 
-## Push from remote a new container
+### Management UI pages
 
-```bash
-docker build -t cai-r34-honestdid:v4 .   
-docker tag cai-r34-honestdid:v4 [r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4](http://r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4)       
-docker push [r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4](http://r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4) 
-```
+| Page | URL |
+|------|-----|
+| Overview | `/ui` |
+| Replicate from a remote repository | `/ui/replicate` |
+| Repository names | `/ui/repositories` |
+| Storage browser | `/ui/browser` (each folder is its own URL, e.g. `/ui/browser/repositories/local-repo/tags`) |
+| Recent replication jobs | `/ui/jobs` |
+| Container registry API | `/ui/api` |
 
 ## Quick start (CAI engine / container)
 

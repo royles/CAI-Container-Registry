@@ -19,7 +19,11 @@ from app.image_refs import (
     find_images_by_version_tag,
     tag_detail_with_refs,
 )
-from app.runtime_label_patch import patch_image_tag_runtime_labels, runtime_fields_from_labels
+from app.runtime_label_patch import (
+    patch_image_tag_runtime_labels,
+    repair_runtime_version_metadata,
+    runtime_fields_from_labels,
+)
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
@@ -443,6 +447,32 @@ def ui_job_status(
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return {"job": job.to_dict()}
+
+
+@router.post("/ui/repositories/{repository:path}/tags/{tag}/repair-runtime-labels")
+def ui_repair_runtime_labels(
+    repository: str,
+    tag: str,
+    body: UIRepoMutation,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+) -> dict:
+    """Align short/maintenance/full (and Env) for Runtime Catalog validation."""
+    _verify_ui_admin_key(body.app_api_key, settings)
+    try:
+        result = repair_runtime_version_metadata(storage, repository, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Image not found: {repository}:{tag}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result.get("changed"):
+        audit.record_runtime_labels(
+            repository,
+            tag,
+            message="Repaired runtime version labels for Runtime Catalog",
+        )
+    return result
 
 
 @router.post("/ui/repositories/{repository:path}/tags/{tag}/ensure-version-tag")

@@ -180,8 +180,18 @@ def _version_triple_check(summary: dict[str, str | None]) -> dict[str, Any]:
         }
     expected = f"{short}.{maint}"
     ok = full.startswith(expected) if full else False
+    inferred_short = None
+    if not ok and full.endswith(f".{maint}"):
+        inferred_short = full[: -(len(maint) + 1)]
     return {
         "ok": ok,
+        "expected_full": expected,
         "expected_full_prefix": expected,
         "message": "OK" if ok else f"full_version should start with '{expected}'",
+        "catalog_fields": {"short_version": short, "maintenance_version": maint, "full_version": full},
+        "suggested_fix": (
+            {"short_version": inferred_short, "maintenance_version": maint, "full_version": full}
+            if inferred_short and inferred_short != short
+            else None
+        ),
     }

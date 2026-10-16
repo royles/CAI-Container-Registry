@@ -29,6 +29,14 @@ def canonical_full_version(short_version: str, maintenance_version: str) -> str:
     return f"{short_version}.{maintenance_version}"
 
 
+def _infer_short_from_full_and_maintenance(full: str, maintenance: str) -> str | None:
+    """If full is '{short}.{maintenance}', return short (fixes short_version set to full by mistake)."""
+    suffix = f".{maintenance}"
+    if full.endswith(suffix) and len(full) > len(suffix):
+        return full[: -len(suffix)]
+    return None
+
+
 def normalize_runtime_version_fields(fields: dict[str, str]) -> dict[str, str]:
     """
     Enforce Runtime Catalog version rules on merged edition/version fields.
@@ -36,21 +44,53 @@ def normalize_runtime_version_fields(fields: dict[str, str]) -> dict[str, str]:
     """
     short = (fields.get("short_version") or "").strip()
     maint = (fields.get("maintenance_version") or "").strip()
+    full = (fields.get("full_version") or "").strip()
     if maint and not maint.isdigit():
         raise ValueError(
             "maintenance_version must be an integer (e.g. 1, 2). "
             "Values like 'b8' belong in short_version, not maintenance_version."
         )
+    if not short and full and maint.isdigit():
+        inferred = _infer_short_from_full_and_maintenance(full, maint)
+        if inferred:
+            short = inferred
+            fields["short_version"] = short
     if short and maint:
         expected_full = canonical_full_version(short, maint)
-        full = (fields.get("full_version") or "").strip()
         if full and not full.startswith(expected_full):
-            raise ValueError(
-                f"full_version must start with '{expected_full}' "
-                f"(short_version + '.' + maintenance_version). Current full_version is '{full}'."
-            )
+            inferred_short = _infer_short_from_full_and_maintenance(full, maint)
+            if inferred_short and canonical_full_version(inferred_short, maint) == full:
+                short = inferred_short
+                fields["short_version"] = short
+                expected_full = full
+            else:
+                raise ValueError(
+                    f"Runtime Catalog expects full_version to start with '{expected_full}' "
+                    f"(short_version + '.' + maintenance_version). "
+                    f"Current: short='{short}', maintenance='{maint}', full='{full}'. "
+                    f"Often short_version should be '{_infer_short_from_full_and_maintenance(full, maint) or '…'}' "
+                    f"when full is '{full}' and maintenance is '{maint}'."
+                )
         fields["full_version"] = expected_full
     return fields
+
+
+def repair_runtime_version_metadata(
+    storage: LocalRegistryStorage,
+    repo: str,
+    tag: str,
+) -> dict[str, Any]:
+    """Re-read labels, normalize version triple, rewrite config/manifests and version tag alias."""
+    from app.cloudera_metadata import inspect_cloudera_runtime_metadata
+
+    meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
+    current = runtime_fields_from_labels(meta.get("all_config_labels") or {})
+    if not current.get("short_version") or not current.get("maintenance_version"):
+        raise ValueError(
+            "Cannot repair: short_version and maintenance_version must be present on the image config."
+        )
+    normalized = normalize_runtime_version_fields(dict(current))
+    return patch_image_tag_runtime_labels(storage, repo, tag, normalized)
 
 
 def prepare_runtime_label_updates(
@@ -123,25 +163,30 @@ def _apply_runtime_updates_to_labels(
 
 
 def _apply_runtime_updates_to_env(config: dict[str, Any], updates: dict[str, str]) -> bool:
-    cfg = config.get("config")
-    if not isinstance(cfg, dict):
-        return False
-    env = cfg.get("Env")
-    if not isinstance(env, list):
-        return False
+    if not isinstance(config.get("config"), dict):
+        config["config"] = {}
+    cfg = config["config"]
+    if not isinstance(cfg.get("Env"), list):
+        cfg["Env"] = []
+    env = cfg["Env"]
     changed = False
     for field, env_key in _FIELD_TO_ENV.items():
         if field not in updates:
             continue
         value = updates[field]
         prefix = f"{env_key}="
+        found = False
         for i, entry in enumerate(env):
             if isinstance(entry, str) and entry.startswith(prefix):
                 new_entry = f"{env_key}={value}"
                 if entry != new_entry:
                     env[i] = new_entry
                     changed = True
+                found = True
                 break
+        if not found:
+            env.append(f"{env_key}={value}")
+            changed = True
     return changed
 
 

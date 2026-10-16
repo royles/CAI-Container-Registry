@@ -192,6 +192,12 @@
     </div>
 
     <div class="card">
+      <h2>Repository names</h2>
+      <p class="hint"><code>local-repo</code> is only an example. You can use many repositories in one registry, including nested paths such as <code>runtimes</code>, <code>models</code>, or <code>runtimes/jupyter</code>. Push or replicate to any valid name; each gets its own folder under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>. Layer blobs are shared under <code>.../blobs/sha256/</code>.</p>
+      <p class="hint">To rename a repository (metadata only, blobs unchanged): <code>POST /api/v1/repositories/local-repo/rename</code> with JSON <code>{ "new_name": "runtimes" }</code> and header <code>X-API-Key</code> when <code>APP_API_KEY</code> is set.</p>
+    </div>
+
+    <div class="card">
       <h2>Local repositories</h2>
       {% if repositories %}
       <table>

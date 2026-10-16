@@ -123,6 +123,26 @@ def list_tags(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+class RenameRepositoryRequest(BaseModel):
+    new_name: str = Field(..., description="New repository path, e.g. runtimes or models/custom")
+
+
+@app.post("/api/v1/repositories/{name}/rename")
+def rename_repository(
+    name: str,
+    body: RenameRepositoryRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    try:
+        storage.rename_repository(name, body.new_name.strip())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"old_name": name, "new_name": body.new_name.strip(), "tags": storage.list_tags(body.new_name.strip())}
+
+
 def _run_import(importer: ImageImporter, job_id: str, body: ImportRequest) -> None:
     importer.replicate(
         body.source,

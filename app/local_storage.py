@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 
 _REPO_NAME = re.compile(r"^[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*$")

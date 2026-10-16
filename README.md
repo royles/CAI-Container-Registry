@@ -87,6 +87,27 @@ Temporary debug: set `LOCAL_REGISTRY_PUBLIC_READ=true` on the application to all
 
 Point runtime/engine pulls at your application subdomain as registry host and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
 
+### Multiple repositories and rename
+
+Repository names are arbitrary (lowercase, numbers, `-`, `_`, `.`, and `/` for nesting). Examples:
+
+- `local-repo:v3` → metadata in `data/registry/docker/registry/v2/repositories/local-repo/`
+- `runtimes/jupyter:v1` → `.../repositories/runtimes/jupyter/`
+- `models/my-model:2` → `.../repositories/models/my-model/`
+
+Image layers live once in `.../blobs/sha256/` and are shared across repositories.
+
+Rename repository metadata (tags/manifest links only):
+
+```bash
+curl -X POST "https://<host>/api/v1/repositories/local-repo/rename" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $APP_API_KEY" \
+  -d '{"new_name": "runtimes"}'
+```
+
+After rename, use `host/runtimes:<tag>` for pulls and Runtime Catalog. Old paths such as `host/local-repo:<tag>` no longer exist.
+
 ### Push from your laptop (`docker push`)
 
 The registry supports Docker Registry HTTP API v2 **uploads** (POST/PATCH/PUT on `/v2/.../blobs/uploads/` and PUT manifests).

@@ -1,1 +1,72 @@
+# CAI Private Container Registry
 
+Cloudera AI Workbench project that runs as an **Analytical Application** on `CDSW_APP_PORT`. It hosts a **project-local OCI registry** (Docker Registry HTTP API V2) and provides a **web UI** to replicate images from remote registries (including Cloudera) into private storage on the project filesystem.
+
+## Features
+
+- Local registry at `/v2/` backed by `REGISTRY_DATA_DIR` (persist on project NFS in CAI)
+- Management UI at `/ui` — remote source, credentials, single-tag or all-tags replication
+- JSON API for automation (`/api/v1/import`, `/api/v1/repositories`, …)
+
+## Quick start (local)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export CDSW_APP_PORT=8090
+python entry.py
+```
+
+Open [http://localhost:8090/ui](http://localhost:8090/ui).
+
+## Cloudera AI Application setup
+
+1. Add this project to CAI (Git or template).
+2. Set project or application environment variables (see [.env.example](.env.example)):
+   - `REGISTRY_DATA_DIR=data/registry` — keep under the project tree for persistence
+   - `LOCAL_REGISTRY_USERNAME` / `LOCAL_REGISTRY_PASSWORD` — optional Basic auth for `/v2/`
+   - `APP_API_KEY` — required for replication from the UI/API when set
+3. **Applications → New Application**
+   - Script: `entry.py`
+   - Subdomain: e.g. `registry-app`
+   - Bind: listens on `0.0.0.0` and **`CDSW_APP_PORT`**
+4. Test in a session before deploying (Cloudera recommendation).
+
+## Replicate from Cloudera (UI)
+
+1. Open `https://<subdomain>.<your-cai-domain>/ui`
+2. Enter the remote image, e.g.  
+   `docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8`
+3. Provide remote username/password or token if the registry is private.
+4. Choose a local repository name (or leave blank to mirror the remote path).
+5. Use **Replicate all tags** to copy every tag from the remote repository.
+
+Imported blobs are deduplicated in local storage; tags are listed on the UI home page.
+
+## HTTP API (optional)
+
+```bash
+curl -X POST "https://<host>/api/v1/import/sync" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $APP_API_KEY" \
+  -d '{
+    "source": "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8",
+    "target_repo": "cloudera/ml-runtime-jupyterlab-python3.10-standard",
+    "target_tag": "2023.08.2-b8",
+    "remote_username": "user",
+    "remote_password": "token"
+  }'
+```
+
+## Using replicated images in CAI
+
+Point runtime/engine pulls at your application URL host (same subdomain as the app) and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
+
+## Layout
+
+- `entry.py` — CAI application entrypoint
+- `app/main.py` — API routes
+- `app/ui_routes.py` — `/ui` management interface
+- `app/local_storage.py` — on-disk registry layout
+- `app/importer.py` — remote replication logic

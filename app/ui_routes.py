@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.audit_log import RegistryAuditStore, list_registry_activity, query_registry_activity
-from app.cloudera_metadata import inspect_cloudera_runtime_metadata
+from app.cloudera_metadata import inspect_cloudera_runtime_metadata, runtime_label_summary
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
@@ -95,10 +95,33 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
+def _tag_detail(storage: LocalRegistryStorage, repo: str, tag: str) -> dict:
+    detail: dict = {"name": tag, "runtime_display": None, "runtime_summary": {}, "cloudera_labels_found": {}}
+    try:
+        meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
+    except (FileNotFoundError, ValueError):
+        detail["runtime_missing"] = True
+        return detail
+    summary = meta.get("runtime_summary") or runtime_label_summary(meta.get("all_config_labels") or {})
+    detail["runtime_summary"] = summary
+    detail["runtime_display"] = summary.get("display")
+    detail["cloudera_labels_found"] = meta.get("cloudera_labels_found") or {}
+    detail["runtime_missing"] = meta.get("cloudera_labels_missing", True)
+    detail["runtime_error"] = meta.get("error")
+    return detail
+
+
 def _list_repos(storage: LocalRegistryStorage) -> list[dict]:
     repos = []
     for name in storage.list_repositories():
-        repos.append({"name": name, "tags": storage.list_tags(name)})
+        tag_details = [_tag_detail(storage, name, tag) for tag in storage.list_tags(name)]
+        repos.append(
+            {
+                "name": name,
+                "tags": [t["name"] for t in tag_details],
+                "tag_details": tag_details,
+            }
+        )
     return repos
 
 

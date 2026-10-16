@@ -18,7 +18,7 @@
       <tr>
         <th>Repository</th>
         <th>Pull / push image reference</th>
-        <th>Tags</th>
+        <th>Tags &amp; runtime metadata</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -47,8 +47,27 @@
           </ul>
         </td>
         <td>
-          {% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}
-          {% if not repo.tags %}<span class="hint">empty</span>{% endif %}
+          {% if repo.tag_details %}
+          <ul class="ref-list tag-meta-list">
+            {% for t in repo.tag_details %}
+            <li class="tag-meta-item">
+              <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
+              {% if t.runtime_display %}
+              <div class="runtime-meta-line">{{ t.runtime_display }}</div>
+              {% if t.runtime_summary.full_version and t.runtime_summary.full_version != t.runtime_display %}
+              <div class="hint runtime-meta-sub">Full version: {{ t.runtime_summary.full_version }}</div>
+              {% endif %}
+              {% elif t.runtime_error %}
+              <div class="hint runtime-meta-sub">{{ t.runtime_error }}</div>
+              {% elif t.runtime_missing %}
+              <div class="hint runtime-meta-sub">No Cloudera runtime labels on config</div>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <span class="hint">empty</span>
+          {% endif %}
         </td>
         <td>
           <div class="actions">

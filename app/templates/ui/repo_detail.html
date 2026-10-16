@@ -13,7 +13,18 @@
   {% if cloudera_meta.cloudera_labels_missing %}
   <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
   {% elif cloudera_meta.ok %}
-  <p class="hint" style="color:#067647;">Runtime labels present. Diagnostics: <code>{{ diagnostics_url }}</code></p>
+  {% set rs = cloudera_meta.runtime_summary or {} %}
+  {% if rs.display %}
+  <p style="margin:0 0 8px;font-size:1rem;font-weight:600;">{{ rs.display }}</p>
+  {% endif %}
+  {% if cloudera_meta.cloudera_labels_found %}
+  <table class="runtime-labels-table">
+    {% for key, value in cloudera_meta.cloudera_labels_found.items() %}
+    <tr><td><code>{{ key }}</code></td><td>{{ value }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  <p class="hint" style="margin-top:10px;">Diagnostics: <code>{{ diagnostics_url }}</code></p>
   {% endif %}
 </div>
 <div class="card">

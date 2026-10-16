@@ -21,6 +21,7 @@ app = FastAPI(
     title="CAI Private Container Registry",
     description="Project-local OCI registry on CDSW_APP_PORT with remote import.",
     version="0.1.0",
+    redirect_slashes=False,
 )
 app.include_router(registry_v2_router)
 app.include_router(registry_push_router)
@@ -45,6 +46,16 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> LocalRe
 
 def get_importer(settings: Annotated[Settings, Depends(get_settings)]) -> ImageImporter:
     return ImageImporter(settings)
+
+
+@app.get("/health/registry-upload")
+def health_registry_upload() -> dict:
+    """Quick probe: if this returns JSON but POST /v2/.../blobs/uploads/ is 404, the ingress is not forwarding POST to the app."""
+    return {
+        "status": "ok",
+        "upload_post_path": "/v2/{repository}/blobs/uploads/",
+        "note": "404 on POST with no auth error means routing/proxy, not credentials",
+    }
 
 
 @app.get("/health")

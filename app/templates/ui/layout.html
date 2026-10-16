@@ -94,10 +94,13 @@
       font-size: 13px; word-break: break-all; color: #0f172a;
     }
     .endpoint-desc { font-size: 13px; color: #5c6570; margin-top: 6px; }
-    .copy-btn {
-      margin-top: 8px; background: #fff; color: var(--accent); border: 1px solid var(--accent);
-      padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 6px;
+    .copy-btn, .copy-ref-btn {
+      background: #fff; color: var(--accent); border: 1px solid var(--accent);
+      padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 6px; margin-left: 6px;
     }
+    .image-ref { font-size: 13px; word-break: break-all; }
+    .ref-list { margin: 0; padding: 0; list-style: none; }
+    .ref-list li { margin: 6px 0; }
     .badge {
       display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.03em; background: #eef4ff; color: #175cd3; padding: 2px 8px; border-radius: 999px;
@@ -133,10 +136,8 @@
       <div class="nav-group">
         <div class="nav-label">Operations</div>
         <a href="/ui" class="nav-item{% if active_nav == 'home' %} active{% endif %}">Overview<span class="nav-item-desc">Summary and shortcuts</span></a>
-        <a href="/ui/replicate" class="nav-item{% if active_nav == 'replicate' %} active{% endif %}">Replicate from a remote repository<span class="nav-item-desc">Import into this private registry</span></a>
-        <a href="/ui/repositories" class="nav-item{% if active_nav == 'repositories' %} active{% endif %}">Repository names<span class="nav-item-desc">Create, rename, delete</span></a>
-        <a href="/ui/browser" class="nav-item{% if active_nav == 'browser' %} active{% endif %}">Storage browser<span class="nav-item-desc">Repositories, tags, blobs on disk</span></a>
-        <a href="/ui/jobs" class="nav-item{% if active_nav == 'jobs' %} active{% endif %}">Recent replication jobs<span class="nav-item-desc">Import activity and status</span></a>
+        <a href="/ui/repositories" class="nav-item{% if active_nav == 'repositories' %} active{% endif %}">Repositories<span class="nav-item-desc">Names, tags, push and pull URLs</span></a>
+        <a href="/ui/replicate" class="nav-item{% if active_nav == 'replicate' %} active{% endif %}">Replicate from remote<span class="nav-item-desc">Import images and job history</span></a>
       </div>
       <div class="nav-group">
         <div class="nav-label">Reference</div>

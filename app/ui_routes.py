@@ -164,16 +164,18 @@ def manage_ui_home(
 def manage_ui_replicate(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     return _render_ui_page(
         request,
         "replicate",
         active_nav="replicate",
-        page_title="Replicate from a remote repository",
-        page_lead="Import images from Cloudera or another OCI registry into this project-local private registry.",
+        page_title="Replicate from remote",
+        page_lead="Import images from Cloudera or another OCI registry, and review recent replication jobs.",
         storage=storage,
         settings=settings,
+        jobs=importer.jobs.list_jobs()[:20],
     )
 
 
@@ -187,30 +189,16 @@ def manage_ui_repositories(
         request,
         "repositories",
         active_nav="repositories",
-        page_title="Repository names",
-        page_lead="Create empty repositories or manage names, tags, and metadata on disk.",
+        page_title="Repositories",
+        page_lead="Manage repository names, copy pull/push image references, and browse on-disk layout.",
         storage=storage,
         settings=settings,
     )
 
 
-@router.get("/ui/jobs", response_class=HTMLResponse)
-def manage_ui_jobs(
-    request: Request,
-    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    importer: Annotated[ImageImporter, Depends(get_importer)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> HTMLResponse:
-    return _render_ui_page(
-        request,
-        "jobs",
-        active_nav="jobs",
-        page_title="Recent replication jobs",
-        page_lead="Status of recent import jobs started from this console or the JSON API.",
-        storage=storage,
-        settings=settings,
-        jobs=importer.jobs.list_jobs()[:20],
-    )
+@router.get("/ui/jobs", response_class=RedirectResponse)
+def manage_ui_jobs_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/ui/replicate", status_code=302)
 
 
 @router.get("/ui/api", response_class=HTMLResponse)
@@ -245,9 +233,9 @@ def manage_ui_browser(
     return _render_ui_page(
         request,
         "browser",
-        active_nav="browser",
+        active_nav="repositories",
         page_title=browse.title,
-        page_lead="Navigate registry metadata and content-addressed blobs.",
+        page_lead="On-disk registry layout (opened from Repositories). Each folder is a separate page.",
         storage=storage,
         settings=settings,
         browse=browse,

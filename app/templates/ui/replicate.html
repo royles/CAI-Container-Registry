@@ -1,5 +1,5 @@
 {% extends "ui/layout.html" %}
-{% block title %}Replicate — CAI Private Registry{% endblock %}
+{% block title %}Replicate from remote — CAI Private Registry{% endblock %}
 {% block content %}
 <div class="card">
   <form id="replicateForm">
@@ -45,6 +45,27 @@
     <div id="jobStatus" class="status-banner"></div>
   </form>
 </div>
+
+<div class="card" style="margin-top:16px;">
+  <h2 style="margin:0 0 12px;font-size:1.05rem;">Recent replication jobs</h2>
+  {% if jobs %}
+  <table>
+    <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td class="status {{ job.status }}">{{ job.status }}</td>
+        <td><code>{{ job.source }}</code></td>
+        <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
+        <td>{{ job.message }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint" style="margin:0;">No replication jobs yet.</p>
+  {% endif %}
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -64,12 +85,12 @@
       const job = data.job;
       showStatus(`Job ${job.id.slice(0, 8)}… ${job.status}: ${job.message || "working…"}`);
       if (job.status === "succeeded" || job.status === "failed") {
-        if (job.status === "succeeded") setTimeout(() => location.assign("/ui/jobs"), 1200);
+        if (job.status === "succeeded") setTimeout(() => location.assign("/ui/replicate"), 1200);
         return;
       }
       await new Promise(r => setTimeout(r, 2000));
     }
-    showStatus("Job is still running; open Recent replication jobs for updates.", false);
+    showStatus("Job is still running; refresh this page for updates.", false);
   }
   form.addEventListener("submit", async (e) => {
     e.preventDefault();

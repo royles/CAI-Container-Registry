@@ -44,7 +44,7 @@ python3 entry.py
 
 ## Replicate from Cloudera (UI)
 
-1. Open `https://<subdomain>.<your-cai-domain>/`
+1. Open **Replicate from a remote repository** at `https://<subdomain>.<your-cai-domain>/ui/replicate`
 2. Enter the remote image, e.g.
 
    `docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8`

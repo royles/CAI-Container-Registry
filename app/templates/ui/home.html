@@ -8,15 +8,14 @@
   </div>
   <div class="stat">
     <div class="stat-value">{{ jobs|length }}</div>
-    <div class="stat-label">Recent jobs shown</div>
+    <div class="stat-label">Recent replication jobs</div>
   </div>
 </div>
 <div class="card">
-  <p class="hint" style="margin-top:0;">This application serves the management console and the Docker Registry HTTP API on the same host. Clients use <code>/v2/</code>; use the operations in the left panel for each task.</p>
+  <p class="hint" style="margin-top:0;">This application serves the management console and the Docker Registry HTTP API on the same host. Clients use <code>/v2/</code>; each task has its own page in the left panel.</p>
   <ul class="quick-links">
-    <li><a href="/ui/replicate">Replicate from a remote repository →</a></li>
-    <li><a href="/ui/repositories">Repository names →</a></li>
-    <li><a href="/ui/browser">Storage browser →</a></li>
+    <li><a href="/ui/repositories">Repositories →</a></li>
+    <li><a href="/ui/replicate">Replicate from remote →</a></li>
     <li><a href="/ui/api">Container registry API →</a></li>
   </ul>
 </div>

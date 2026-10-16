@@ -1,8 +1,8 @@
 {% extends "ui/layout.html" %}
-{% block title %}Repository names — CAI Private Registry{% endblock %}
+{% block title %}Repositories — CAI Private Registry{% endblock %}
 {% block content %}
 <div class="card">
-  <p class="hint" style="margin-top:0;">Create empty repositories (e.g. <code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>) before push, or they appear when you push or replicate. Metadata: <code>{{ data_dir }}/docker/registry/v2/repositories/</code></p>
+  <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog. Registry API: <code>{{ registry_v2_url }}</code></p>
   {% if app_api_key_required %}
   <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
   <input id="repo_admin_api_key" type="password" autocomplete="off" />
@@ -14,12 +14,42 @@
   <div id="repoStatus" class="status-banner"></div>
   {% if repositories %}
   <table style="margin-top:16px;">
-    <thead><tr><th>Repository</th><th>Tags</th><th>Actions</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Repository</th>
+        <th>Pull / push image reference</th>
+        <th>Tags</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
     <tbody>
       {% for repo in repositories %}
       <tr data-repo="{{ repo.name }}">
-        <td><code>{{ repo.name }}</code> · <a href="/ui/browser/repositories/{{ repo.name }}">browse</a></td>
-        <td>{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}{% if not repo.tags %}<span class="hint">empty</span>{% endif %}</td>
+        <td>
+          <code>{{ repo.name }}</code>
+          <div class="hint"><a href="/ui/browser/repositories/{{ repo.name }}">Browse storage</a></div>
+        </td>
+        <td>
+          <ul class="ref-list">
+            {% if repo.tags %}
+              {% for t in repo.tags %}
+              <li>
+                <code class="image-ref">{{ registry_host }}/{{ repo.name }}:{{ t }}</code>
+                <button type="button" class="copy-ref-btn" data-copy-text="{{ registry_host }}/{{ repo.name }}:{{ t }}">Copy</button>
+              </li>
+              {% endfor %}
+            {% else %}
+              <li>
+                <code class="image-ref">{{ registry_host }}/{{ repo.name }}:&lt;tag&gt;</code>
+                <span class="hint"> — set tag on push, e.g. <code>docker push {{ registry_host }}/{{ repo.name }}:v1</code></span>
+              </li>
+            {% endif %}
+          </ul>
+        </td>
+        <td>
+          {% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}
+          {% if not repo.tags %}<span class="hint">empty</span>{% endif %}
+        </td>
         <td>
           <div class="actions">
             <button type="button" class="btn-inline btn-secondary btn-rename">Rename</button>
@@ -31,12 +61,22 @@
     </tbody>
   </table>
   {% else %}
-  <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, or replicate / push an image.</p>
+  <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, replicate from remote, or push with <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>.</p>
   {% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
+  document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.dataset.copyText || "";
+      navigator.clipboard.writeText(text).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = prev; }, 1500);
+      });
+    });
+  });
   function repoApiKey() {
     {% if app_api_key_required %}
     return document.getElementById("repo_admin_api_key")?.value || "";

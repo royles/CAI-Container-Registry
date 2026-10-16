@@ -6,10 +6,10 @@ import uvicorn
 
 
 def main() -> None:
-    port = int(os.environ.get("CDSW_APP_PORT", os.environ.get("CDSW_READONLY_PORT", "8090")))
+    port = int(os.environ["CDSW_APP_PORT"]) if os.environ.get("CDSW_APP_PORT") else 8090
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=port,
         log_level=os.environ.get("LOG_LEVEL", "info").lower(),
     )

@@ -12,7 +12,15 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from app.importer import ImportJob
 
-AuditAction = Literal["replicate", "push", "pull", "rename", "repo_create", "repo_delete"]
+AuditAction = Literal[
+    "replicate",
+    "push",
+    "pull",
+    "rename",
+    "repo_create",
+    "repo_delete",
+    "auth",
+]
 AuditStatus = Literal["queued", "running", "pending", "succeeded", "failed"]
 
 
@@ -74,18 +82,33 @@ class AuditEvent:
         return repo
 
     def display_summary(self) -> str:
-        if self.action == "replicate" and self.source:
-            return f"{self.source} → {self.display_target()}"
+        if self.action == "replicate":
+            if self.status == "failed":
+                if self.source:
+                    return f"Replicate failed · {self.source} → {self.display_target()}"
+                return f"Replicate failed · {self.display_target()}"
+            if self.source:
+                return f"{self.source} → {self.display_target()}"
+            return self.display_target()
         if self.action == "push":
-            return f"Pushed {self.display_target()}"
+            verb = "Push failed" if self.status == "failed" else "Pushed"
+            return f"{verb} · {self.display_target()}"
         if self.action == "pull":
+            if self.status == "failed":
+                return f"Container pull failed · {self.display_target()}"
             return f"Container pull · {self.display_target()}"
+        if self.action == "auth":
+            scope = self.repository or "request"
+            return f"Authentication failed · {scope}"
         if self.action == "rename":
-            return f"Renamed {self.display_target()}"
+            verb = "Rename failed" if self.status == "failed" else "Renamed"
+            return f"{verb} · {self.display_target()}"
         if self.action == "repo_create":
-            return f"Created repository {self.repository or '—'}"
+            verb = "Create repository failed" if self.status == "failed" else "Created repository"
+            return f"{verb} · {self.repository or '—'}"
         if self.action == "repo_delete":
-            return f"Deleted repository {self.repository or '—'}"
+            verb = "Delete repository failed" if self.status == "failed" else "Deleted repository"
+            return f"{verb} · {self.repository or '—'}"
         return self.display_target()
 
 
@@ -238,6 +261,45 @@ class RegistryAuditStore:
         self.save(event)
         return event
 
+    def record_operation_failure(
+        self,
+        action: AuditAction,
+        *,
+        repository: str | None = None,
+        tag: str | None = None,
+        source: str | None = None,
+        old_repository: str | None = None,
+        message: str,
+    ) -> AuditEvent:
+        now = datetime.now(timezone.utc).isoformat()
+        event = AuditEvent(
+            id=str(uuid.uuid4()),
+            action=action,
+            status="failed",
+            repository=repository,
+            tag=tag,
+            source=source,
+            old_repository=old_repository,
+            message=message,
+            finished_at=now,
+        )
+        self.save(event)
+        return event
+
+    def record_auth_failure(
+        self,
+        scope: str,
+        *,
+        path: str,
+        method: str,
+        message: str,
+    ) -> AuditEvent:
+        return self.record_operation_failure(
+            "auth",
+            repository=scope,
+            message=message,
+        )
+
 
 def _is_digest_reference(reference: str) -> bool:
     ref = reference.strip()
@@ -304,7 +366,7 @@ def _event_matches_query(event: AuditEvent, query: str) -> bool:
         event.source or "",
         event.old_repository or "",
         event.message or "",
-        event.summary if hasattr(event, "summary") else event.display_summary(),
+        event.display_summary(),
         event.action,
         event.status,
     ]

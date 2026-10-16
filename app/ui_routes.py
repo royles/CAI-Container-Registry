@@ -237,6 +237,7 @@ def ui_audit_events(
         "rename",
         "repo_create",
         "repo_delete",
+        "auth",
     }
     if action and action not in allowed_actions:
         raise HTTPException(status_code=400, detail="Invalid action filter")

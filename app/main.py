@@ -4,9 +4,11 @@ import uuid
 from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from app.audit_http import record_http_failure_audit
 from app.audit_log import RegistryAuditStore, query_registry_activity
 from app.auth import require_admin_api_key, require_local_registry_auth
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata
@@ -29,6 +31,15 @@ app = FastAPI(
 app.include_router(registry_v2_router)
 app.include_router(registry_push_router)
 app.include_router(ui_router)
+
+
+@app.exception_handler(HTTPException)
+async def audit_logged_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+    try:
+        record_http_failure_audit(request, exc)
+    except Exception:
+        pass
+    return await http_exception_handler(request, exc)
 
 
 class ImportRequest(BaseModel):

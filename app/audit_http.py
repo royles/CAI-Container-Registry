@@ -25,6 +25,12 @@ _API_REPO_SUB_RE = re.compile(
 _API_REPO_DEL_RE = re.compile(r"^/api/v1/repositories/(?P<repo>.+?)/?$")
 _UI_REPLICATE_RE = re.compile(r"^/ui/replicate/?$")
 _API_IMPORT_RE = re.compile(r"^/api/v1/import/?$")
+_UI_RUNTIME_LABELS_RE = re.compile(
+    r"^/ui/repositories/(?P<repo>.+?)/tags/(?P<tag>[^/]+)/runtime-labels/?$"
+)
+_API_RUNTIME_LABELS_RE = re.compile(
+    r"^/api/v1/repositories/(?P<repo>.+?)/tags/(?P<tag>[^/]+)/runtime-labels/?$"
+)
 
 
 def _detail_text(detail: Any) -> str:
@@ -111,6 +117,16 @@ def record_http_failure_audit(request: Request, exc: HTTPException) -> None:
                     message=message,
                 )
             return
+
+    rt = _UI_RUNTIME_LABELS_RE.match(path) or _API_RUNTIME_LABELS_RE.match(path)
+    if rt and exc.status_code >= 400:
+        audit.record_operation_failure(
+            "runtime_labels",
+            repository=rt.group("repo"),
+            tag=rt.group("tag"),
+            message=message,
+        )
+        return
 
     mutation = _admin_mutation_action(path, method)
     if mutation and exc.status_code >= 400:

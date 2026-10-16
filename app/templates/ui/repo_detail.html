@@ -1,7 +1,7 @@
 {% extends "ui/layout.html" %}
 {% block title %}{{ repository }}:{{ tag }} — Private OCI Registry{% endblock %}
 {% block page_h1 %}<code>{{ repository }}:{{ tag }}</code>{% endblock %}
-{% block page_lead %}Image asset detail · <a href="/ui/browser/repositories/{{ repository }}/tags/{{ tag }}">Open in storage browser</a>{% endblock %}
+{% block page_lead %}Image asset detail · <a href="/ui/browser/repositories/{{ repository }}/tags/{{ tag }}">Open in storage browser</a> · <a href="/ui/repositories">Back to repositories</a>{% endblock %}
 {% block content %}
 <div class="card" style="background:#fff8e6;border-color:#f5d98a;">
   Container images are served via the <strong>Registry HTTP API</strong> (<code>/v2/</code>), not as HTML at
@@ -26,6 +26,44 @@
   {% endif %}
   <p class="hint" style="margin-top:10px;">Diagnostics: <code>{{ diagnostics_url }}</code></p>
   {% endif %}
+</div>
+<div class="card" id="runtime-labels">
+  <h2 style="margin-top:0;font-size:1.05rem;">Edit runtime labels</h2>
+  <p class="hint" style="margin-top:0;">
+    Updates both <code>ML_RUNTIME_*</code> and <code>com.cloudera.ml.runtime.*</code> on the image config,
+    rewrites config and manifest blobs, and relinks this tag. Multi-arch indexes update every platform manifest.
+    Use a unique edition/version before registering in Runtime Catalog again.
+  </p>
+  <form id="runtimeLabelsForm">
+    <div class="row">
+      <div>
+        <label for="edition">Edition</label>
+        <input id="edition" name="edition" type="text" value="{{ runtime_fields.edition or '' }}"
+          placeholder="e.g. R 4.5 HonestDiD JupyterLab 3.0.1 (project custom)" />
+      </div>
+      <div>
+        <label for="full_version">Full version</label>
+        <input id="full_version" name="full_version" type="text" value="{{ runtime_fields.full_version or '' }}" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="short_version">Short version</label>
+        <input id="short_version" name="short_version" type="text" value="{{ runtime_fields.short_version or '' }}" />
+      </div>
+      <div>
+        <label for="maintenance_version">Maintenance version</label>
+        <input id="maintenance_version" name="maintenance_version" type="text"
+          value="{{ runtime_fields.maintenance_version or '' }}" />
+      </div>
+    </div>
+    {% if app_api_key_required %}
+    <label for="runtime_labels_api_key">Admin API key</label>
+    <input id="runtime_labels_api_key" type="password" autocomplete="off" required />
+    {% endif %}
+    <button type="submit" class="primary" id="runtimeLabelsSave">Save runtime labels</button>
+    <div id="runtimeLabelsStatus" class="status-banner"></div>
+  </form>
 </div>
 <div class="card">
   <h2 style="margin-top:0;font-size:1.05rem;">Registry API</h2>
@@ -59,4 +97,55 @@
   </table>
   {% endif %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const runtimeForm = document.getElementById("runtimeLabelsForm");
+  const runtimeStatus = document.getElementById("runtimeLabelsStatus");
+  function showRuntimeStatus(text, isError) {
+    runtimeStatus.style.display = "block";
+    runtimeStatus.textContent = text;
+    runtimeStatus.classList.toggle("error", !!isError);
+  }
+  function repoTagPathUrl(base, repo, tag) {
+    const repoEnc = repo.split("/").map(encodeURIComponent).join("/");
+    return `${base}/${repoEnc}/tags/${encodeURIComponent(tag)}/runtime-labels`;
+  }
+  runtimeForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      edition: document.getElementById("edition").value.trim() || null,
+      full_version: document.getElementById("full_version").value.trim() || null,
+      short_version: document.getElementById("short_version").value.trim() || null,
+      maintenance_version: document.getElementById("maintenance_version").value.trim() || null,
+    };
+    {% if app_api_key_required %}
+    payload.app_api_key = document.getElementById("runtime_labels_api_key").value;
+    {% endif %}
+    showRuntimeStatus("Saving…", false);
+    try {
+      const res = await fetch(
+        repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Save failed");
+      if (!data.changed) {
+        showRuntimeStatus("No changes detected (values unchanged).", false);
+        return;
+      }
+      showRuntimeStatus(
+        `Saved. ${data.configs_updated} config(s) and ${data.manifests_updated} manifest(s) updated. Reloading…`,
+        false
+      );
+      setTimeout(() => location.reload(), 900);
+    } catch (err) {
+      showRuntimeStatus(err.message || String(err), true);
+    }
+  });
+</script>
 {% endblock %}

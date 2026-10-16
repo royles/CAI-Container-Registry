@@ -20,6 +20,7 @@ AuditAction = Literal[
     "repo_create",
     "repo_delete",
     "auth",
+    "runtime_labels",
 ]
 AuditStatus = Literal["queued", "running", "pending", "succeeded", "failed"]
 
@@ -109,6 +110,8 @@ class AuditEvent:
         if self.action == "repo_delete":
             verb = "Delete repository failed" if self.status == "failed" else "Deleted repository"
             return f"{verb} · {self.repository or '—'}"
+        if self.action == "runtime_labels":
+            return f"Runtime labels updated · {self.display_target()}"
         return self.display_target()
 
 
@@ -282,6 +285,25 @@ class RegistryAuditStore:
             old_repository=old_repository,
             message=message,
             finished_at=now,
+        )
+        self.save(event)
+        return event
+
+    def record_runtime_labels(
+        self,
+        repository: str,
+        tag: str,
+        *,
+        message: str,
+    ) -> AuditEvent:
+        event = AuditEvent(
+            id=str(uuid.uuid4()),
+            action="runtime_labels",
+            status="succeeded",
+            repository=repository,
+            tag=tag,
+            message=message,
+            finished_at=datetime.now(timezone.utc).isoformat(),
         )
         self.save(event)
         return event

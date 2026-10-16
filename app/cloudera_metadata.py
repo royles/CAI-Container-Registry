@@ -25,6 +25,17 @@ _MANIFEST_LIST_TYPES = {
     "application/vnd.oci.image.index.v1+json",
 }
 
+# Logical form fields → (legacy Docker label, com.cloudera.ml.runtime.* label)
+RUNTIME_LABEL_FIELDS: dict[str, tuple[str, str]] = {
+    "edition": ("ML_RUNTIME_EDITION", "com.cloudera.ml.runtime.edition"),
+    "full_version": ("ML_RUNTIME_FULL_VERSION", "com.cloudera.ml.runtime.full-version"),
+    "short_version": ("ML_RUNTIME_SHORT_VERSION", "com.cloudera.ml.runtime.short-version"),
+    "maintenance_version": (
+        "ML_RUNTIME_MAINTENANCE_VERSION",
+        "com.cloudera.ml.runtime.maintenance-version",
+    ),
+}
+
 
 def runtime_label_summary(labels: dict[str, str]) -> dict[str, str | None]:
     """Human-facing runtime identity strings from config labels."""

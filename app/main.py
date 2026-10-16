@@ -16,6 +16,7 @@ from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
+from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
 from app.registry_v2 import router as registry_v2_router
@@ -176,6 +177,13 @@ class RenameRepositoryRequest(BaseModel):
     new_name: str = Field(..., description="New repository path, e.g. runtimes or models/custom")
 
 
+class RuntimeLabelsPatchRequest(BaseModel):
+    edition: str | None = Field(default=None, description="ML_RUNTIME_EDITION / com.cloudera.ml.runtime.edition")
+    full_version: str | None = Field(default=None, description="ML_RUNTIME_FULL_VERSION")
+    short_version: str | None = Field(default=None, description="ML_RUNTIME_SHORT_VERSION")
+    maintenance_version: str | None = Field(default=None, description="ML_RUNTIME_MAINTENANCE_VERSION")
+
+
 @app.post("/api/v1/repositories/{name:path}/rename")
 def rename_repository(
     name: str,
@@ -207,6 +215,31 @@ def rename_repository(
         "tags": storage.list_tags(new_name),
         **rename_stats,
     }
+
+
+@app.patch("/api/v1/repositories/{name:path}/tags/{tag}/runtime-labels")
+def patch_runtime_labels(
+    name: str,
+    tag: str,
+    body: RuntimeLabelsPatchRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    updates = body.model_dump(exclude_none=True)
+    try:
+        result = patch_image_tag_runtime_labels(storage, name, tag, updates)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Image not found: {name}:{tag}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result.get("changed"):
+        audit.record_runtime_labels(
+            name,
+            tag,
+            message=f"Updated runtime labels via API ({result.get('configs_updated', 0)} config(s))",
+        )
+    return result
 
 
 @app.delete("/api/v1/repositories/{name:path}")

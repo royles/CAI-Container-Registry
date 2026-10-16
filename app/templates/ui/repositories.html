@@ -52,6 +52,7 @@
             {% for t in repo.tag_details %}
             <li class="tag-meta-item">
               <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
+              <span class="hint"> · <a href="/repos/{{ repo.name }}/tags/{{ t.name }}#runtime-labels">Edit labels</a></span>
               {% if t.runtime_display %}
               <div class="runtime-meta-line">{{ t.runtime_display }}</div>
               {% if t.runtime_summary.full_version and t.runtime_summary.full_version != t.runtime_display %}

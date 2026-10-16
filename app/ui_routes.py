@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.audit_log import RegistryAuditStore, list_registry_activity, query_registry_activity
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata, runtime_label_summary
+from app.runtime_label_patch import patch_image_tag_runtime_labels, runtime_fields_from_labels
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
@@ -36,6 +37,14 @@ class UICreateRepositoryRequest(BaseModel):
 
 class UIRenameRepositoryRequest(BaseModel):
     new_name: str
+    app_api_key: str | None = None
+
+
+class UIRuntimeLabelsRequest(BaseModel):
+    edition: str | None = None
+    full_version: str | None = None
+    short_version: str | None = None
+    maintenance_version: str | None = None
     app_api_key: str | None = None
 
 
@@ -261,6 +270,7 @@ def ui_audit_events(
         "repo_create",
         "repo_delete",
         "auth",
+        "runtime_labels",
     }
     if action and action not in allowed_actions:
         raise HTTPException(status_code=400, detail="Invalid action filter")
@@ -444,6 +454,37 @@ def ui_job_status(
     return {"job": job.to_dict()}
 
 
+@router.post("/ui/repositories/{repository:path}/tags/{tag}/runtime-labels")
+def ui_patch_runtime_labels(
+    repository: str,
+    tag: str,
+    body: UIRuntimeLabelsRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    updates = body.model_dump(exclude={"app_api_key"}, exclude_none=True)
+    try:
+        result = patch_image_tag_runtime_labels(storage, repository, tag, updates)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Image not found: {repository}:{tag}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result.get("changed"):
+        audit.record_runtime_labels(
+            repository,
+            tag,
+            message=(
+                f"Updated runtime labels ({result.get('configs_updated', 0)} config(s), "
+                f"{result.get('manifests_updated', 0)} manifest(s)); "
+                f"manifest {result.get('old_manifest_digest', '')[:19]}… → "
+                f"{result.get('new_manifest_digest', '')[:19]}…"
+            ),
+        )
+    return result
+
+
 @router.get("/repos/{repository:path}/tags/{tag}", response_class=HTMLResponse)
 def repo_tag_detail(
     repository: str,
@@ -453,10 +494,12 @@ def repo_tag_detail(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     cloudera_meta: dict = {}
+    runtime_fields: dict[str, str] = {}
     try:
         detail = storage.describe_image(repository, tag)
         try:
             cloudera_meta = inspect_cloudera_runtime_metadata(storage, repository, tag)
+            runtime_fields = runtime_fields_from_labels(cloudera_meta.get("all_config_labels") or {})
         except FileNotFoundError:
             cloudera_meta = {"ok": False, "error": "Image not found"}
     except FileNotFoundError as exc:
@@ -489,6 +532,7 @@ def repo_tag_detail(
         runtime_catalog_ref=f"{registry_host}/{repository}:{tag}",
         registry_host=registry_host,
         cloudera_meta=cloudera_meta,
+        runtime_fields=runtime_fields,
         diagnostics_url=f"{base}/api/v1/diagnostics/runtime-catalog/{repository}/{tag}",
     )
 

@@ -120,30 +120,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script>
-  window.__registryModalQueue = window.__registryModalQueue || [];
-  window.openRegistryModal = function (kind, repository, tag) {
-    function dispatch() {
-      const ui = window.RegistryRepositoriesUi;
-      if (!ui) return false;
-      if (kind === "delete") ui.openDeleteRepository(repository);
-      else if (kind === "unlock") ui.openUnlockRepository(repository);
-      else if (kind === "deleteTag" && tag) ui.openDeleteTag(repository, tag);
-      else if (kind === "rename") ui.openRenameRepository(repository);
-      else if (kind === "gc") ui.openGarbageCollection();
-      return true;
-    }
-    if (!dispatch()) {
-      window.__registryModalQueue.push({ kind, repository, tag });
-      const onReady = () => {
-        dispatch();
-        window.removeEventListener("registry-repositories-ui-ready", onReady);
-      };
-      window.addEventListener("registry-repositories-ui-ready", onReady);
-    }
-  };
-</script>
-<script type="module" src="/static/ui/repositories-modals.js"></script>
+{% include "ui/_registry_modals_bridge.html" %}
 <script>
   document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -183,7 +160,7 @@
     gcStatus.style.color = "";
   };
 
-  document.getElementById("createRepoForm").addEventListener("submit", async (e) => {
+  document.getElementById("createRepoForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("new_repo_name").value.trim();
     try {
@@ -199,25 +176,26 @@
       showRepoStatus(err.message || String(err), true);
     }
   });
-  document.querySelectorAll(".btn-rename").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const row = btn.closest("tr");
+  document.addEventListener("click", async (e) => {
+    const renameBtn = e.target.closest(".btn-rename");
+    if (renameBtn) {
+      const row = renameBtn.closest("tr");
       const oldName = row?.dataset.repo;
       if (!oldName || row?.dataset.locked === "true") return;
       window.openRegistryModal("rename", oldName);
-    });
-  });
-  document.querySelectorAll(".btn-delete").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const row = btn.closest("tr");
+      return;
+    }
+    const deleteBtn = e.target.closest(".btn-delete");
+    if (deleteBtn) {
+      const row = deleteBtn.closest("tr");
       const name = row?.dataset.repo;
       if (!name || row?.dataset.locked === "true") return;
       window.openRegistryModal("delete", name);
-    });
-  });
-  document.querySelectorAll(".btn-toggle-lock").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const row = btn.closest("tr");
+      return;
+    }
+    const lockBtn = e.target.closest(".btn-toggle-lock");
+    if (lockBtn) {
+      const row = lockBtn.closest("tr");
       const name = row?.dataset.repo;
       if (!name) return;
       const locked = row.dataset.locked === "true";
@@ -237,15 +215,15 @@
       } catch (err) {
         showRepoStatus(err.message || String(err), true);
       }
-    });
-  });
-  document.querySelectorAll(".btn-delete-tag").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const repo = btn.dataset.repo;
-      const tag = btn.dataset.tag;
-      if (!repo || !tag || btn.disabled) return;
+      return;
+    }
+    const deleteTagBtn = e.target.closest(".btn-delete-tag");
+    if (deleteTagBtn) {
+      const repo = deleteTagBtn.dataset.repo;
+      const tag = deleteTagBtn.dataset.tag;
+      if (!repo || !tag || deleteTagBtn.disabled) return;
       window.openRegistryModal("deleteTag", repo, tag);
-    });
+    }
   });
   async function runGc(dryRun) {
     const gcStatus = document.getElementById("gcStatus");

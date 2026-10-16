@@ -21191,19 +21191,18 @@ function ok() {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1e4,
-    padding: 12
+    padding: 16
   };
 }
 function sk() {
   return {
     background: "#fff",
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid #e3e6ea",
-    boxShadow: "0 8px 28px rgba(0,0,0,0.1)",
-    maxWidth: 440,
+    boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+    maxWidth: 480,
     width: "100%",
-    padding: "16px 18px",
-    fontSize: 14,
+    padding: "22px 24px",
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: "#3c3c3c"
   };
@@ -21448,9 +21447,7 @@ function hk() {
         $.kind === "delete" ? S.openDeleteRepository($.repository) : $.kind === "unlock" ? S.openUnlockRepository($.repository) : $.kind === "deleteTag" && $.tag ? S.openDeleteTag($.repository, $.tag) : $.kind === "rename" ? S.openRenameRepository($.repository) : $.kind === "gc" && S.openGarbageCollection();
       window.__registryModalQueue = [];
     }
-    return window.dispatchEvent(new Event("registry-repositories-ui-ready")), () => {
-      delete window.RegistryRepositoriesUi;
-    };
+    window.dispatchEvent(new Event("registry-repositories-ui-ready"));
   }, [je]), !I || !k ? null : I === "delete" ? /* @__PURE__ */ Le.jsx(ck, { repository: k.repository, onClose: Re }) : I === "unlock" ? /* @__PURE__ */ Le.jsx(fk, { repository: k.repository, onClose: Re }) : I === "deleteTag" && k.tag && k.confirmRef ? /* @__PURE__ */ Le.jsx(
     dk,
     {

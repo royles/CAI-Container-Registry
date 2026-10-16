@@ -1,0 +1,29 @@
+<script>
+  window.__registryModalQueue = window.__registryModalQueue || [];
+  window.openRegistryModal = function (kind, repository, tag) {
+    function dispatch() {
+      const ui = window.RegistryRepositoriesUi;
+      if (!ui) return false;
+      if (kind === "delete") ui.openDeleteRepository(repository);
+      else if (kind === "unlock") ui.openUnlockRepository(repository);
+      else if (kind === "deleteTag" && tag) ui.openDeleteTag(repository, tag);
+      else if (kind === "rename") ui.openRenameRepository(repository);
+      else if (kind === "gc") ui.openGarbageCollection();
+      else return false;
+      return true;
+    }
+    if (dispatch()) return;
+    window.__registryModalQueue.push({ kind, repository, tag });
+    if (window.__registryModalReadyListener) return;
+    window.__registryModalReadyListener = true;
+    window.addEventListener("registry-repositories-ui-ready", function flushRegistryModalQueue() {
+      const ui = window.RegistryRepositoriesUi;
+      if (!ui) return;
+      const pending = window.__registryModalQueue.splice(0);
+      for (const item of pending) {
+        window.openRegistryModal(item.kind, item.repository, item.tag);
+      }
+    });
+  };
+</script>
+<script type="module" src="/static/ui/repositories-modals.js"></script>

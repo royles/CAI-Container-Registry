@@ -135,26 +135,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script>
-  window.__registryModalQueue = window.__registryModalQueue || [];
-  window.openRegistryModal = function (kind, repository, tag) {
-    function dispatch() {
-      const ui = window.RegistryRepositoriesUi;
-      if (!ui) return false;
-      if (kind === "deleteTag" && tag) ui.openDeleteTag(repository, tag);
-      return true;
-    }
-    if (!dispatch()) {
-      window.__registryModalQueue.push({ kind, repository, tag });
-      const onReady = () => {
-        dispatch();
-        window.removeEventListener("registry-repositories-ui-ready", onReady);
-      };
-      window.addEventListener("registry-repositories-ui-ready", onReady);
-    }
-  };
-</script>
-<script type="module" src="/static/ui/repositories-modals.js"></script>
+{% include "ui/_registry_modals_bridge.html" %}
 <script>
   window.registryRepoApiKey = function () {
     {% if app_api_key_required %}

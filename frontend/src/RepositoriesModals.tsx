@@ -19,20 +19,19 @@ function overlayStyle(): React.CSSProperties {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 10000,
-    padding: 12,
+    padding: 16,
   };
 }
 
 function dialogStyle(): React.CSSProperties {
   return {
     background: "#fff",
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid #e3e6ea",
-    boxShadow: "0 8px 28px rgba(0,0,0,0.1)",
-    maxWidth: 440,
+    boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+    maxWidth: 480,
     width: "100%",
-    padding: "16px 18px",
-    fontSize: 14,
+    padding: "22px 24px",
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: "#3c3c3c",
   };
@@ -58,7 +57,7 @@ function ModalShell({
   return createPortal(
     <div style={overlayStyle()} role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div style={dialogStyle()} role="dialog" aria-modal="true" aria-labelledby="registry-modal-title">
-        <h2 id="registry-modal-title" style={{ margin: "0 0 8px", fontSize: "0.95rem", fontWeight: 700 }}>
+        <h2 id="registry-modal-title" style={{ margin: "0 0 12px", fontSize: "1.15rem" }}>
           {title}
         </h2>
         {children}
@@ -70,10 +69,10 @@ function ModalShell({
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "7px 10px",
+  padding: "10px 12px",
   border: "1px solid #cfd5df",
-  borderRadius: 6,
-  fontSize: 13,
+  borderRadius: 8,
+  fontSize: 14,
   boxSizing: "border-box",
 };
 
@@ -399,9 +398,6 @@ export function RepositoriesModalsHost() {
     }
 
     window.dispatchEvent(new Event("registry-repositories-ui-ready"));
-    return () => {
-      delete window.RegistryRepositoriesUi;
-    };
   }, [open]);
 
   if (!kind || !payload) return null;

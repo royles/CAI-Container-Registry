@@ -8,14 +8,29 @@
   <code>/{{ repository }}:{{ tag }}</code>. Bytes live under <code>{{ data_dir }}/</code>.
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Cloudera Runtime Catalog</h2>
-  <p class="hint">Image field (no <code>https://</code>): <code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
+  <h2 style="margin-top:0;font-size:1.05rem;">Client pull &amp; Runtime Catalog</h2>
+  <p class="hint" style="margin-top:0;">Use this reference for <code>docker pull</code> and Runtime Catalog (no <code>https://</code>):</p>
+  <p style="margin:8px 0;"><code id="runtime-catalog-ref" class="image-ref">{{ pull_refs.client_pull_ref }}</code>
+    <button type="button" class="copy-ref-btn" data-copy-text="{{ pull_refs.client_pull_ref }}">Copy</button></p>
+  {% if pull_refs.version_tag != pull_refs.registry_tag %}
+  <p class="hint">Registry tag on disk: <code>{{ pull_refs.registry_tag }}</code> · version tag for clients: <code>{{ pull_refs.version_tag }}</code>
+    (alias created when you save runtime labels). Root shortcuts:
+    <code>/{{ repository }}:{{ pull_refs.version_tag }}</code>,
+    <code>/{{ pull_refs.version_tag }}</code> when unique.</p>
+  {% else %}
+  <p class="hint">Set short/maintenance version and save labels to add a <code>full_version</code> pull tag. Root shortcut: <code>/{{ repository }}:{{ tag }}</code>.</p>
+  {% endif %}
   {% if cloudera_meta.cloudera_labels_missing %}
   <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
   {% elif cloudera_meta.ok %}
   {% set rs = cloudera_meta.runtime_summary or {} %}
   {% if rs.display %}
   <p style="margin:0 0 8px;font-size:1rem;font-weight:600;">{{ rs.display }}</p>
+  {% endif %}
+  {% if cloudera_meta.version_check and cloudera_meta.version_check.ok == false %}
+  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>Version mismatch:</strong> {{ cloudera_meta.version_check.message }}
+    {% if cloudera_meta.version_check.expected_full_prefix %} — set full version to <code>{{ cloudera_meta.version_check.expected_full_prefix }}</code> (or fix short/maintenance).{% endif %}
+  </p>
   {% endif %}
   {% if cloudera_meta.cloudera_labels_found %}
   <table class="runtime-labels-table">
@@ -73,7 +88,8 @@
   <ul class="hint">
     <li>Manifest: <code>{{ manifest_url }}</code></li>
     <li>Tags list: <code>{{ tags_list_url }}</code></li>
-    <li>Reference: <code>{{ image_ref }}</code></li>
+    <li>Client pull: <code>{{ pull_refs.client_pull_ref }}</code></li>
+    <li>Manifest by registry tag: <code>{{ manifest_url }}</code></li>
   </ul>
 </div>
 <div class="card">
@@ -103,6 +119,16 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.dataset.copyText || "";
+      navigator.clipboard.writeText(text).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = prev; }, 1500);
+      });
+    });
+  });
   const runtimeForm = document.getElementById("runtimeLabelsForm");
   const runtimeStatus = document.getElementById("runtimeLabelsStatus");
   function showRuntimeStatus(text, isError) {
@@ -120,7 +146,7 @@
     const hint = document.getElementById("computedFullHint");
     if (shortV && maintV && /^[0-9]+$/.test(maintV)) {
       hint.style.display = "block";
-      hint.textContent = `Catalog expects full_version to start with: ${shortV}.${maintV}`;
+      hint.textContent = `Catalog full_version: ${shortV}.${maintV} — client pull tag /${shortV}.${maintV} or /{{ repository }}:${shortV}.${maintV} after save.`;
     } else {
       hint.style.display = "none";
     }

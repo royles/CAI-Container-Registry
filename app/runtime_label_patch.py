@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from app.cloudera_metadata import RUNTIME_LABEL_FIELDS
+from app.image_refs import sync_version_tag_alias
 from app.local_storage import LocalRegistryStorage
 
 _MANIFEST_LIST_TYPES = {
@@ -286,11 +287,15 @@ def patch_image_tag_runtime_labels(
         }
 
     new_digest = storage.put_manifest(repo, tag, new_bytes)
+    alias_tag = sync_version_tag_alias(
+        storage, repo, tag, new_bytes, normalized.get("full_version")
+    )
     return {
         "changed": True,
         "repository": repo,
         "tag": tag,
         "old_manifest_digest": old_digest,
         "new_manifest_digest": new_digest,
+        "version_tag_alias": alias_tag,
         **stats,
     }

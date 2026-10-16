@@ -16,6 +16,7 @@ from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
+from app.image_refs import build_client_pull_refs
 from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
@@ -104,15 +105,24 @@ def runtime_catalog_diagnostics(
     by the cluster runtime-manager pod (TLS, Site Admin docker credentials, /v2/ reachability).
     """
     host = settings.public_registry_host or request.url.netloc
-    image_ref = f"{host}/{repository}:{tag}"
     try:
         metadata = inspect_cloudera_runtime_metadata(storage, repository, tag)
     except FileNotFoundError:
         metadata = {"ok": False, "error": "Image not found in local registry storage"}
+    pull_refs = build_client_pull_refs(
+        host,
+        repository,
+        tag,
+        metadata.get("runtime_summary") if metadata.get("ok") else None,
+    )
+    version_tag = pull_refs["version_tag"]
     return {
-        "image_reference_for_runtime_catalog": image_ref,
+        "image_reference_for_runtime_catalog": pull_refs["client_pull_ref"],
+        "image_reference_registry_tag": pull_refs["registry_ref"],
+        "pull_refs": pull_refs,
         "registry_ping_url": f"https://{host}/v2/",
         "manifest_url": f"https://{host}/v2/{repository}/manifests/{tag}",
+        "manifest_url_for_client_pull": f"https://{host}/v2/{repository}/manifests/{version_tag}",
         "local_auth_enabled": settings.local_auth_enabled,
         "local_registry_public_read": settings.local_registry_public_read,
         "runtime_catalog_checks": {

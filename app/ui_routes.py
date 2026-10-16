@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.audit_log import RegistryAuditStore, list_registry_activity, query_registry_activity
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata, runtime_label_summary
+from app.image_refs import build_client_pull_refs, find_images_by_version_tag, tag_detail_with_refs
 from app.runtime_label_patch import patch_image_tag_runtime_labels, runtime_fields_from_labels
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
@@ -104,26 +105,10 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
-def _tag_detail(storage: LocalRegistryStorage, repo: str, tag: str) -> dict:
-    detail: dict = {"name": tag, "runtime_display": None, "runtime_summary": {}, "cloudera_labels_found": {}}
-    try:
-        meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
-    except (FileNotFoundError, ValueError):
-        detail["runtime_missing"] = True
-        return detail
-    summary = meta.get("runtime_summary") or runtime_label_summary(meta.get("all_config_labels") or {})
-    detail["runtime_summary"] = summary
-    detail["runtime_display"] = summary.get("display")
-    detail["cloudera_labels_found"] = meta.get("cloudera_labels_found") or {}
-    detail["runtime_missing"] = meta.get("cloudera_labels_missing", True)
-    detail["runtime_error"] = meta.get("error")
-    return detail
-
-
-def _list_repos(storage: LocalRegistryStorage) -> list[dict]:
+def _list_repos(storage: LocalRegistryStorage, registry_host: str) -> list[dict]:
     repos = []
     for name in storage.list_repositories():
-        tag_details = [_tag_detail(storage, name, tag) for tag in storage.list_tags(name)]
+        tag_details = [tag_detail_with_refs(storage, registry_host, name, tag) for tag in storage.list_tags(name)]
         repos.append(
             {
                 "name": name,
@@ -139,9 +124,9 @@ def _ui_common_context(
     storage: LocalRegistryStorage,
     settings: Settings,
 ) -> dict:
-    repos = _list_repos(storage)
-    base = str(request.base_url).rstrip("/")
     registry_host = settings.public_registry_host or request.url.netloc
+    repos = _list_repos(storage, registry_host)
+    base = str(request.base_url).rstrip("/")
     example_repo = repos[0]["name"] if repos else "my-team/my-image"
     example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
     return {
@@ -191,7 +176,8 @@ def manage_ui_home(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     activity = _activity_for_ui(settings, limit=50)
-    repos = _list_repos(storage)
+    registry_host = settings.public_registry_host or request.url.netloc
+    repos = _list_repos(storage, registry_host)
     storage_stats = storage.stats()
     total_tags = sum(len(r["tags"]) for r in repos)
     activity_ok = sum(1 for e in activity if e.status == "succeeded")
@@ -515,6 +501,12 @@ def repo_tag_detail(
 
     base = str(request.base_url).rstrip("/")
     registry_host = settings.public_registry_host or request.url.netloc
+    pull_refs = build_client_pull_refs(
+        registry_host,
+        repository,
+        tag,
+        cloudera_meta.get("runtime_summary"),
+    )
     return _render_ui_page(
         request,
         "repo_detail",
@@ -528,8 +520,9 @@ def repo_tag_detail(
         detail=detail,
         manifest_url=f"{base}/v2/{repository}/manifests/{tag}",
         tags_list_url=f"{base}/v2/{repository}/tags/list",
-        image_ref=f"{registry_host}/{repository}:{tag}",
-        runtime_catalog_ref=f"{registry_host}/{repository}:{tag}",
+        pull_refs=pull_refs,
+        image_ref=pull_refs["client_pull_ref"],
+        runtime_catalog_ref=pull_refs["client_pull_ref"],
         registry_host=registry_host,
         cloudera_meta=cloudera_meta,
         runtime_fields=runtime_fields,
@@ -553,14 +546,32 @@ _RESERVED_ROOT_SEGMENTS = frozenset(
 
 
 @router.get("/{image_ref}")
-def image_ref_shortcut(image_ref: str) -> RedirectResponse:
+def image_ref_shortcut(
+    image_ref: str,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+) -> RedirectResponse:
     """
-    Convenience redirect: /local-repo:v1 → /repos/local-repo/tags/v1
-    (OCI images are served under /v2/, not as HTML at the repo:tag path.)
+    Convenience redirect:
+    - /runtimes:4.5.1 → tag detail (client pull ref)
+    - /4.5.1 → tag detail when full_version (or tag name) is unique
+    OCI bytes are still under /v2/.
     """
-    if image_ref in _RESERVED_ROOT_SEGMENTS or "/" in image_ref or ":" not in image_ref:
+    if image_ref in _RESERVED_ROOT_SEGMENTS or "/" in image_ref:
         raise HTTPException(status_code=404, detail="Not Found")
-    repository, tag = image_ref.rsplit(":", 1)
-    if not repository or not tag:
-        raise HTTPException(status_code=404, detail="Not Found")
-    return RedirectResponse(url=f"/repos/{repository}/tags/{tag}", status_code=302)
+
+    if ":" in image_ref:
+        repository, tag = image_ref.rsplit(":", 1)
+        if not repository or not tag:
+            raise HTTPException(status_code=404, detail="Not Found")
+        return RedirectResponse(url=f"/repos/{repository}/tags/{tag}", status_code=302)
+
+    matches = find_images_by_version_tag(storage, image_ref)
+    if len(matches) == 1:
+        repo, tag = matches[0]
+        return RedirectResponse(url=f"/repos/{repo}/tags/{tag}", status_code=302)
+    if len(matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Version '{image_ref}' matches multiple images; use repo:tag form.",
+        )
+    raise HTTPException(status_code=404, detail="Not Found")

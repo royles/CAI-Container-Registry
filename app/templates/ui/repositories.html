@@ -17,7 +17,7 @@
     <thead>
       <tr>
         <th>Repository</th>
-        <th>Pull / push image reference</th>
+        <th>Client pull reference</th>
         <th>Tags &amp; runtime metadata</th>
         <th>Actions</th>
       </tr>
@@ -32,10 +32,14 @@
         <td>
           <ul class="ref-list">
             {% if repo.tags %}
-              {% for t in repo.tags %}
+              {% for t in repo.tag_details %}
               <li>
-                <code class="image-ref">{{ registry_host }}/{{ repo.name }}:{{ t }}</code>
-                <button type="button" class="copy-ref-btn" data-copy-text="{{ registry_host }}/{{ repo.name }}:{{ t }}">Copy</button>
+                {% set refs = t.pull_refs %}
+                <code class="image-ref">{{ refs.client_pull_ref }}</code>
+                <button type="button" class="copy-ref-btn" data-copy-text="{{ refs.client_pull_ref }}">Copy</button>
+                {% if refs.version_tag != refs.registry_tag %}
+                <div class="hint runtime-meta-sub">Registry tag <code>{{ refs.registry_tag }}</code> · pull / Runtime Catalog use full version <code>{{ refs.version_tag }}</code></div>
+                {% endif %}
               </li>
               {% endfor %}
             {% else %}
@@ -52,6 +56,9 @@
             {% for t in repo.tag_details %}
             <li class="tag-meta-item">
               <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
+              {% if t.pull_refs.version_tag != t.pull_refs.registry_tag %}
+              <span class="hint"> · pull: <code>{{ t.pull_refs.version_tag }}</code></span>
+              {% endif %}
               <span class="hint"> · <a href="/repos/{{ repo.name }}/tags/{{ t.name }}#runtime-labels">Edit labels</a></span>
               {% if t.runtime_display %}
               <div class="runtime-meta-line">{{ t.runtime_display }}</div>

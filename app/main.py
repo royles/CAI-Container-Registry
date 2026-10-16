@@ -23,7 +23,7 @@ from app.remote_client import RemoteRegistryAuth
 from app.ui_routes import router as ui_router
 
 app = FastAPI(
-    title="CAI Private Container Registry",
+    title="Private OCI Registry",
     description="Project-local OCI registry on CDSW_APP_PORT with remote import.",
     version="0.1.0",
     redirect_slashes=False,

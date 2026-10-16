@@ -2,7 +2,7 @@
 {% from "ui/icons.html" import icon_repo, icon_replicate, icon_api %}
 {% from "ui/_activity.html" import activity_rows %}
 {% block body_class %}page-overview{% endblock %}
-{% block title %}Overview — CAI Private Registry{% endblock %}
+{% block title %}Overview — Private OCI Registry{% endblock %}
 {% block page_h1 %}{% endblock %}
 {% block page_lead %}{% endblock %}
 {% block extra_head %}
@@ -96,7 +96,7 @@
 {% block content %}
 <section class="overview-hero" aria-labelledby="overview-title">
   <div class="overview-hero-inner">
-    <span class="overview-eyebrow">Cloudera AI · Private OCI Registry</span>
+    <span class="overview-eyebrow">Private OCI Registry</span>
     <h1 id="overview-title">Your project-local container registry</h1>
     <p>Push, pull, and replicate images on this application URL. The management console and Docker Registry API v2 share the same host — clients use <code>/v2/</code>.</p>
     <div class="overview-hero-host">{{ registry_host }}</div>

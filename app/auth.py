@@ -38,7 +38,7 @@ def require_local_registry_auth(
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Registry authentication required",
-        headers={"WWW-Authenticate": 'Basic realm="CAI Private Registry"'},
+        headers={"WWW-Authenticate": 'Basic realm="Private OCI Registry"'},
     )
 
 

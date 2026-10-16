@@ -26,10 +26,10 @@ python3 entry.py
    - `LOCAL_REGISTRY_USERNAME` / `LOCAL_REGISTRY_PASSWORD` — optional Basic auth for `/v2/`
    - `APP_API_KEY` — required for replication from the UI/API when set
 3. **Applications → New Application**
-   - Script: `entry.py`
+   - Script: `entry.py` (run as the application script — do not paste `main()` into a notebook cell)
    - Subdomain: e.g. `registry-app`
    - Bind: listens on **`127.0.0.1`** and **`CDSW_APP_PORT`** (Cloudera proxies the application subdomain to this port)
-4. Test in a session before deploying (Cloudera recommendation).
+4. Test in a session with `!python3 entry.py` or **Run** on `entry.py`, not by calling `main()` inside Jupyter (that causes “asyncio.run() cannot be called from a running event loop”).
 
 ## Replicate from Cloudera (UI)
 

@@ -10,37 +10,39 @@
   .page-overview .main { padding-top: 24px; }
 
   .overview-hero {
-    position: relative; overflow: hidden; border-radius: 12px; padding: 32px 36px; margin-bottom: 24px;
-    color: #fff;
-    background: linear-gradient(145deg, #3c3c3c 0%, #2a2a2a 55%, #252525 100%);
-    box-shadow: 0 8px 24px rgba(60, 60, 60, 0.18);
+    position: relative; overflow: hidden; border-radius: 12px; padding: 28px 32px; margin-bottom: 24px;
+    color: var(--text-primary);
+    background: linear-gradient(180deg, #f8f9fb 0%, #eef1f5 100%);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     border-left: 4px solid var(--accent);
   }
   .overview-hero::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
-    background:
-      radial-gradient(circle at 92% 18%, rgba(249, 103, 2, 0.22) 0%, transparent 42%),
-      radial-gradient(circle at 8% 88%, rgba(255, 255, 255, 0.06) 0%, transparent 38%);
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(circle at 100% 0%, rgba(249, 103, 2, 0.06) 0%, transparent 50%);
   }
   .overview-hero-inner { position: relative; z-index: 1; max-width: 720px; }
   .overview-eyebrow {
     display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; background: rgba(255,255,255,0.18); padding: 4px 10px; border-radius: 999px;
-    margin-bottom: 12px;
+    text-transform: uppercase; color: #b34d02;
+    background: var(--accent-muted); padding: 4px 10px; border-radius: 999px;
+    border: 1px solid rgba(249, 103, 2, 0.12); margin-bottom: 12px;
   }
-  .overview-hero h1 { margin: 0 0 10px; font-size: 1.85rem; font-weight: 700; line-height: 1.2; color: #fff; }
-  .overview-hero p { margin: 0 0 18px; font-size: 15px; line-height: 1.55; color: rgba(255,255,255,0.92); }
+  .overview-hero h1 { margin: 0 0 10px; font-size: 1.85rem; font-weight: 700; line-height: 1.2; color: var(--text-primary); }
+  .overview-hero p { margin: 0 0 18px; font-size: 15px; line-height: 1.55; color: var(--text-secondary); }
   .overview-hero-host {
     display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
-    background: rgba(0,0,0,0.22); padding: 8px 12px; border-radius: 8px;
+    color: var(--text-primary);
+    background: #fff; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border);
   }
   .overview-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .overview-pill {
     font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
-    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    background: #fff; border: 1px solid var(--border); color: var(--text-secondary);
   }
-  .overview-pill.ok { background: rgba(16, 185, 129, 0.25); border-color: rgba(167, 243, 208, 0.5); }
+  .overview-pill.ok { background: #ecfdf5; border-color: #a7f3d0; color: #067647; }
 
   .overview-metrics {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px;
@@ -95,7 +97,7 @@
   <div class="overview-hero-inner">
     <span class="overview-eyebrow">Cloudera AI · Private OCI Registry</span>
     <h1 id="overview-title">Your project-local container registry</h1>
-    <p>Push, pull, and replicate images on this application URL. The management console and Docker Registry API v2 share the same host — clients use <code style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:4px;">/v2/</code>.</p>
+    <p>Push, pull, and replicate images on this application URL. The management console and Docker Registry API v2 share the same host — clients use <code>/v2/</code>.</p>
     <div class="overview-hero-host">{{ registry_host }}</div>
     <div class="overview-pills">
       <span class="overview-pill ok">Registry API online</span>

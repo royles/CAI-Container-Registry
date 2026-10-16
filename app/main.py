@@ -134,11 +134,29 @@ def list_tags(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+class CreateRepositoryRequest(BaseModel):
+    name: str = Field(..., description="New repository path, e.g. runtimes or models/custom")
+
+
+@app.post("/api/v1/repositories")
+def create_repository(
+    body: CreateRepositoryRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    name = body.name.strip()
+    try:
+        storage.create_repository(name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"name": name, "tags": storage.list_tags(name)}
+
+
 class RenameRepositoryRequest(BaseModel):
     new_name: str = Field(..., description="New repository path, e.g. runtimes or models/custom")
 
 
-@app.post("/api/v1/repositories/{name}/rename")
+@app.post("/api/v1/repositories/{name:path}/rename")
 def rename_repository(
     name: str,
     body: RenameRepositoryRequest,
@@ -151,7 +169,23 @@ def rename_repository(
         raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"old_name": name, "new_name": body.new_name.strip(), "tags": storage.list_tags(body.new_name.strip())}
+    new_name = body.new_name.strip()
+    return {"old_name": name, "new_name": new_name, "tags": storage.list_tags(new_name)}
+
+
+@app.delete("/api/v1/repositories/{name:path}")
+def delete_repository(
+    name: str,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    _: None = Depends(require_admin_api_key),
+) -> dict:
+    try:
+        storage.delete_repository(name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"deleted": name}
 
 
 def _run_import(importer: ImageImporter, job_id: str, body: ImportRequest) -> None:

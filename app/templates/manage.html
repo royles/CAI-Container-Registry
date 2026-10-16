@@ -53,6 +53,14 @@
       border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer;
     }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.btn-inline { margin-top: 0; padding: 6px 10px; font-size: 13px; }
+    button.btn-secondary { background: #fff; color: #0b5fff; border: 1px solid #0b5fff; }
+    button.btn-danger { background: #fff; color: #b42318; border: 1px solid #fecdca; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .inline-form input[type=text] { flex: 1; min-width: 160px; margin: 0; }
+    #repoStatus { margin-top: 10px; padding: 10px; border-radius: 8px; background: #eef4ff; display: none; font-size: 13px; }
+    #repoStatus.error { background: #fef3f2; color: #b42318; }
     code { background: #eef1f5; padding: 2px 6px; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #edf0f3; vertical-align: top; }
@@ -233,31 +241,42 @@
       </div>
     </details>
 
-    <details class="panel">
+    <details class="panel" open>
       <summary>Repository names</summary>
       <div class="panel-body">
-        <p class="hint">Use many repositories (<code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>, etc.). Metadata under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>; blobs shared under <code>.../blobs/sha256/</code>.</p>
-        <p class="hint">Rename: <code>POST /api/v1/repositories/local-repo/rename</code> with <code>{ "new_name": "runtimes" }</code></p>
-      </div>
-    </details>
+        <p class="hint">Create empty repositories (e.g. <code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>) before push, or they appear automatically when you push or replicate an image. Metadata lives under <code>{{ data_dir }}/docker/registry/v2/repositories/</code>.</p>
 
-    <details class="panel" open>
-      <summary>Local repositories</summary>
-      <div class="panel-body">
+        {% if app_api_key_required %}
+        <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
+        <input id="repo_admin_api_key" type="password" autocomplete="off" />
+        {% endif %}
+
+        <form id="createRepoForm" class="inline-form" style="margin-top:14px;">
+          <input id="new_repo_name" type="text" required placeholder="New repository name, e.g. runtimes" />
+          <button type="submit" class="btn-inline">Create repository</button>
+        </form>
+        <div id="repoStatus"></div>
+
         {% if repositories %}
-        <table>
-          <thead><tr><th>Repository</th><th>Tags</th></tr></thead>
+        <table style="margin-top:16px;">
+          <thead><tr><th>Repository</th><th>Tags</th><th>Actions</th></tr></thead>
           <tbody>
             {% for repo in repositories %}
-            <tr>
-              <td><code>{{ repo.name }}</code></td>
-              <td>{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}</td>
+            <tr data-repo="{{ repo.name }}">
+              <td><code class="repo-name">{{ repo.name }}</code></td>
+              <td class="repo-tags">{% for t in repo.tags %}<a href="/repos/{{ repo.name }}/tags/{{ t }}"><code>{{ t }}</code></a>{% if not loop.last %}, {% endif %}{% endfor %}{% if not repo.tags %}<span class="hint">empty</span>{% endif %}</td>
+              <td>
+                <div class="actions">
+                  <button type="button" class="btn-inline btn-secondary btn-rename">Rename</button>
+                  <button type="button" class="btn-inline btn-danger btn-delete">Delete</button>
+                </div>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
-        <p class="hint">No repositories yet. Replicate or push an image to populate storage.</p>
+        <p class="hint" style="margin-top:12px;">No repositories yet. Create one above, or replicate / push an image.</p>
         {% endif %}
       </div>
     </details>
@@ -324,6 +343,88 @@
       }
       showStatus("Job is still running; refresh the page to see updates.", false);
     }
+
+    function repoApiKey() {
+      {% if app_api_key_required %}
+      return document.getElementById("repo_admin_api_key")?.value || "";
+      {% else %}
+      return null;
+      {% endif %}
+    }
+
+    function showRepoStatus(text, isError) {
+      const el = document.getElementById("repoStatus");
+      el.style.display = "block";
+      el.textContent = text;
+      el.classList.toggle("error", !!isError);
+    }
+
+    document.getElementById("createRepoForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("new_repo_name").value.trim();
+      try {
+        const res = await fetch("/ui/repositories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, app_api_key: repoApiKey() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Create failed");
+        showRepoStatus(`Created repository ${name}`, false);
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) {
+        showRepoStatus(err.message || String(err), true);
+      }
+    });
+
+    function repoPathUrl(base, repoName) {
+      return `${base}/${repoName.split("/").map(encodeURIComponent).join("/")}`;
+    }
+
+    document.querySelectorAll(".btn-rename").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const row = btn.closest("tr");
+        const oldName = row?.dataset.repo;
+        if (!oldName) return;
+        const newName = window.prompt(`Rename repository "${oldName}" to:`, oldName);
+        if (!newName || newName.trim() === oldName) return;
+        try {
+          const res = await fetch(`${repoPathUrl("/ui/repositories", oldName)}/rename`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ new_name: newName.trim(), app_api_key: repoApiKey() }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Rename failed");
+          showRepoStatus(`Renamed ${oldName} → ${newName.trim()}`, false);
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) {
+          showRepoStatus(err.message || String(err), true);
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-delete").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const row = btn.closest("tr");
+        const name = row?.dataset.repo;
+        if (!name) return;
+        if (!window.confirm(`Delete repository "${name}" and all its tags? Blob data may remain shared on disk until garbage-collected.`)) return;
+        try {
+          const res = await fetch(`${repoPathUrl("/ui/repositories", name)}/delete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ app_api_key: repoApiKey() }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Delete failed");
+          showRepoStatus(`Deleted ${name}`, false);
+          setTimeout(() => window.location.reload(), 800);
+        } catch (err) {
+          showRepoStatus(err.message || String(err), true);
+        }
+      });
+    });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();

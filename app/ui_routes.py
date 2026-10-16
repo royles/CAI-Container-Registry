@@ -21,6 +21,28 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(tags=["ui"])
 
 
+class UIRepoMutation(BaseModel):
+    app_api_key: str | None = None
+
+
+class UICreateRepositoryRequest(BaseModel):
+    name: str
+    app_api_key: str | None = None
+
+
+class UIRenameRepositoryRequest(BaseModel):
+    new_name: str
+    app_api_key: str | None = None
+
+
+def _verify_ui_admin_key(app_api_key: str | None, settings: Settings) -> None:
+    if not settings.app_api_key:
+        return
+    provided = app_api_key or ""
+    if not secrets.compare_digest(provided, settings.app_api_key):
+        raise HTTPException(status_code=401, detail="Invalid admin API key")
+
+
 class UIReplicateRequest(BaseModel):
     source: str
     target_repo: str | None = None
@@ -41,11 +63,7 @@ def get_importer(settings: Annotated[Settings, Depends(get_settings)]) -> ImageI
 
 
 def _verify_ui_admin(body: UIReplicateRequest, settings: Settings) -> None:
-    if not settings.app_api_key:
-        return
-    provided = body.app_api_key or ""
-    if not secrets.compare_digest(provided, settings.app_api_key):
-        raise HTTPException(status_code=401, detail="Invalid admin API key")
+    _verify_ui_admin_key(body.app_api_key, settings)
 
 
 def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateRequest) -> None:
@@ -130,6 +148,56 @@ def ui_replicate(
     importer.jobs.save(placeholder)
     background.add_task(_run_replicate, importer, job_id, body)
     return {"job_id": job_id, "status": "queued"}
+
+
+@router.post("/ui/repositories")
+def ui_create_repository(
+    body: UICreateRepositoryRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    name = body.name.strip()
+    try:
+        storage.create_repository(name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"name": name, "tags": storage.list_tags(name)}
+
+
+@router.post("/ui/repositories/{repository:path}/rename")
+def ui_rename_repository(
+    repository: str,
+    body: UIRenameRepositoryRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    new_name = body.new_name.strip()
+    try:
+        storage.rename_repository(repository, new_name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Repository not found: {repository}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"old_name": repository, "new_name": new_name}
+
+
+@router.post("/ui/repositories/{repository:path}/delete")
+def ui_delete_repository(
+    repository: str,
+    body: UIRepoMutation,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    try:
+        storage.delete_repository(repository)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Repository not found: {repository}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"deleted": repository}
 
 
 @router.get("/ui/jobs/{job_id}")

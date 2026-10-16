@@ -163,6 +163,52 @@ class LocalRegistryStorage:
         if tag_path.is_file():
             tag_path.unlink()
 
+    def create_repository(self, name: str) -> None:
+        """Create an empty repository (ready for docker push or replicate)."""
+        self.validate_repo_name(name)
+        repo_path = self._repo_dir(name)
+        if repo_path.is_dir() and (repo_path / "_manifests").is_dir():
+            raise ValueError(f"Repository already exists: {name}")
+        tags_root = repo_path / "_manifests" / "tags"
+        tags_root.mkdir(parents=True, exist_ok=True)
+
+    def delete_repository(self, name: str) -> None:
+        """Remove repository metadata (tags/manifest links). Shared blobs are not deleted."""
+        self.validate_repo_name(name)
+        path = self._repo_dir(name)
+        if not path.is_dir():
+            raise FileNotFoundError(name)
+        shutil.rmtree(path)
+        self._prune_empty_repo_parents(path.parent)
+
+    def rename_repository(self, old_name: str, new_name: str) -> None:
+        """
+        Move repository metadata on disk (tags/manifest links). Blob content is
+        shared under docker/registry/v2/blobs/ and is not copied or moved.
+        """
+        self.validate_repo_name(old_name)
+        self.validate_repo_name(new_name)
+        if old_name == new_name:
+            return
+        old_path = self._repo_dir(old_name)
+        new_path = self._repo_dir(new_name)
+        if not old_path.is_dir():
+            raise FileNotFoundError(old_name)
+        if new_path.exists():
+            raise ValueError(f"Repository already exists: {new_name}")
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(old_path), str(new_path))
+        self._prune_empty_repo_parents(old_path.parent)
+
+    def _prune_empty_repo_parents(self, start: Path) -> None:
+        """Remove empty directories left under repositories/ after a rename."""
+        current = start
+        while current != self._repos and self._repos in current.parents:
+            if any(current.iterdir()):
+                break
+            current.rmdir()
+            current = current.parent
+
     def describe_image(self, repo: str, tag: str) -> dict:
         """Human-readable summary of where an image's metadata and blobs are stored."""
         from app.remote_client import manifest_blob_digests

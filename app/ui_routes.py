@@ -15,6 +15,8 @@ from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
+from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
+from app.upload_store import BlobUploadStore
 from app.remote_client import RemoteRegistryAuth
 
 templates = Jinja2Templates(directory="app/templates")
@@ -169,18 +171,26 @@ def ui_create_repository(
 def ui_rename_repository(
     repository: str,
     body: UIRenameRepositoryRequest,
+    request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
     new_name = body.new_name.strip()
     try:
-        storage.rename_repository(repository, new_name)
+        rename_stats = rename_repository_with_dependent_metadata(
+            storage,
+            repository,
+            new_name,
+            registry_hosts=registry_host_candidates(settings, request.url.netloc),
+            import_jobs_dir=settings.import_jobs_dir,
+            upload_store=BlobUploadStore(settings.registry_data_dir),
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Repository not found: {repository}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"old_name": repository, "new_name": new_name}
+    return {"old_name": repository, "new_name": new_name, **rename_stats}
 
 
 @router.post("/ui/repositories/{repository:path}/delete")

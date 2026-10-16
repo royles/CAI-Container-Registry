@@ -12,6 +12,8 @@ from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
+from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
+from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
 from app.registry_v2 import router as registry_v2_router
 from app.remote_client import RemoteRegistryAuth
@@ -160,17 +162,31 @@ class RenameRepositoryRequest(BaseModel):
 def rename_repository(
     name: str,
     body: RenameRepositoryRequest,
+    request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
+    new_name = body.new_name.strip()
     try:
-        storage.rename_repository(name, body.new_name.strip())
+        rename_stats = rename_repository_with_dependent_metadata(
+            storage,
+            name,
+            new_name,
+            registry_hosts=registry_host_candidates(settings, request.url.netloc),
+            import_jobs_dir=settings.import_jobs_dir,
+            upload_store=BlobUploadStore(settings.registry_data_dir),
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    new_name = body.new_name.strip()
-    return {"old_name": name, "new_name": new_name, "tags": storage.list_tags(new_name)}
+    return {
+        "old_name": name,
+        "new_name": new_name,
+        "tags": storage.list_tags(new_name),
+        **rename_stats,
+    }
 
 
 @app.delete("/api/v1/repositories/{name:path}")

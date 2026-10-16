@@ -108,6 +108,8 @@ curl -X POST "https://<host>/api/v1/repositories/local-repo/rename" \
 
 After rename, use `host/runtimes:<tag>` for pulls and Runtime Catalog. Old paths such as `host/local-repo:<tag>` no longer exist.
 
+Rename also updates **dependent metadata stored by this application**: OCI config labels/annotations (e.g. `org.opencontainers.image.ref.name`) and manifest annotations when they reference the old repository path, replication job records under `data/import_jobs/`, and in-progress blob upload sessions under `data/registry/_uploads/`. External clients (Runtime Catalog entries, CI image strings, etc.) are still your responsibility to update.
+
 ### Push from your laptop (`docker push`)
 
 The registry supports Docker Registry HTTP API v2 **uploads** (POST/PATCH/PUT on `/v2/.../blobs/uploads/` and PUT manifests).

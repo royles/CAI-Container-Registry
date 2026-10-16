@@ -62,3 +62,19 @@ class BlobUploadStore:
                 if path.is_file():
                     path.unlink()
             session.rmdir()
+
+    def rename_repository(self, old_name: str, new_name: str) -> int:
+        """Point in-progress uploads at new_name. Returns number of sessions updated."""
+        if not self.root.is_dir():
+            return 0
+        updated = 0
+        for meta_path in self.root.glob("*/meta.json"):
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            if meta.get("repository") == old_name:
+                meta["repository"] = new_name
+                meta_path.write_text(json.dumps(meta), encoding="utf-8")
+                updated += 1
+        return updated

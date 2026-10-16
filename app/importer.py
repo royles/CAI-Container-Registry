@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.audit_log import RegistryAuditStore
 from app.config import Settings
 from app.local_storage import LocalRegistryStorage
 from app.remote_client import (
@@ -80,6 +81,11 @@ class ImageImporter:
         self.settings = settings
         self.storage = LocalRegistryStorage(settings.registry_data_dir)
         self.jobs = ImportJobStore(settings.import_jobs_dir)
+        self.audit = RegistryAuditStore(settings.audit_log_dir)
+
+    def _save_job(self, job: ImportJob) -> None:
+        self.jobs.save(job)
+        self.audit.sync_import_job(job)
 
     def replicate(
         self,
@@ -101,7 +107,7 @@ class ImageImporter:
                 target_tag="*",
                 status="running",
             )
-            self.jobs.save(job)
+            self._save_job(job)
             client = RemoteRegistryClient(self.settings, remote_auth)
             try:
                 tags = client.list_tags(src_ref)
@@ -139,7 +145,7 @@ class ImageImporter:
             finally:
                 client.close()
             job.finished_at = datetime.now(timezone.utc).isoformat()
-            self.jobs.save(job)
+            self._save_job(job)
             return job
 
         tag = target_tag or src_ref.tag
@@ -167,7 +173,7 @@ class ImageImporter:
             target_tag=target_tag,
             status="running",
         )
-        self.jobs.save(job)
+        self._save_job(job)
         try:
             self._import_http(source, target_repo, target_tag, remote_auth, job)
             job.status = "succeeded"
@@ -177,7 +183,7 @@ class ImageImporter:
             job.status = "failed"
             job.message = str(exc)
         job.finished_at = datetime.now(timezone.utc).isoformat()
-        self.jobs.save(job)
+        self._save_job(job)
         return job
 
     def _import_http(

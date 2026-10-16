@@ -1,5 +1,6 @@
 {% extends "ui/layout.html" %}
 {% from "ui/icons.html" import icon_repo, icon_replicate, icon_api %}
+{% from "ui/_activity.html" import activity_rows %}
 {% block body_class %}page-overview{% endblock %}
 {% block title %}Overview — CAI Private Registry{% endblock %}
 {% block page_h1 %}{% endblock %}
@@ -106,8 +107,8 @@
       {% else %}
       <span class="overview-pill">Public read optional</span>
       {% endif %}
-      {% if overview.jobs_active > 0 %}
-      <span class="overview-pill">{{ overview.jobs_active }} job(s) in progress</span>
+      {% if overview.activity_active > 0 %}
+      <span class="overview-pill">{{ overview.activity_active }} operation(s) in progress</span>
       {% endif %}
     </div>
   </div>
@@ -177,21 +178,16 @@
     {% endif %}
   </div>
   <div class="card">
-    <h2>Replication activity</h2>
-    {% if jobs %}
-    {% for job in jobs[:5] %}
-    <div class="job-row">
-      <span class="status {{ job.status }}">{{ job.status }}</span>
-      → <code>{{ job.target_repo }}:{{ job.target_tag }}</code>
-      <div class="hint">{% if job.message %}{{ job.message[:80] }}{% if job.message|length > 80 %}…{% endif %}{% else %}—{% endif %}</div>
-    </div>
-    {% endfor %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">All jobs on replicate page</a></p>
-    {% else %}
-    <p class="empty-state">No replication jobs yet.</p>
+    <h2>Registry activity</h2>
+    <p class="hint" style="margin:0 0 12px;">Audit of pushes, pulls, replications, renames, and repository admin changes.</p>
+    {{ activity_rows(activity, 8) }}
+    {% if activity|length > 8 %}
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">Full activity log</a></p>
+    {% elif activity %}
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">View on replicate page</a></p>
     {% endif %}
-    {% if overview.jobs_ok or overview.jobs_fail %}
-    <p class="hint" style="margin-top:12px;">{{ overview.jobs_ok }} succeeded · {{ overview.jobs_fail }} failed (recent window)</p>
+    {% if overview.activity_ok or overview.activity_fail %}
+    <p class="hint" style="margin-top:12px;">{{ overview.activity_ok }} succeeded · {{ overview.activity_fail }} failed (recent window)</p>
     {% endif %}
   </div>
 </div>

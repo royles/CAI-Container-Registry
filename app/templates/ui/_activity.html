@@ -1,0 +1,46 @@
+{# Shared audit activity list. Expects `activity` list of AuditEvent-like objects. #}
+{% macro activity_table(events, empty_message="No registry activity yet.") %}
+{% if events %}
+<table class="activity-table">
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Status</th>
+      <th>Detail</th>
+      <th>Message</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for event in events %}
+    <tr>
+      <td><span class="audit-action audit-action-{{ event.action }}">{{ event.action|replace('_', ' ') }}</span></td>
+      <td class="status {{ event.status }}">{{ event.status }}</td>
+      <td><code>{{ event.display_summary() }}</code></td>
+      <td class="hint">{% if event.message %}{{ event.message[:120] }}{% if event.message|length > 120 %}…{% endif %}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint" style="margin:0;">{{ empty_message }}</p>
+{% endif %}
+{% endmacro %}
+
+{% macro activity_rows(events, limit=5) %}
+{% if events %}
+{% for event in events[:limit] %}
+<div class="activity-row">
+  <div class="activity-row-head">
+    <span class="audit-action audit-action-{{ event.action }}">{{ event.action|replace('_', ' ') }}</span>
+    <span class="status {{ event.status }}">{{ event.status }}</span>
+  </div>
+  <div class="activity-row-detail"><code>{{ event.display_summary() }}</code></div>
+  {% if event.message %}
+  <div class="hint activity-row-msg">{{ event.message[:100] }}{% if event.message|length > 100 %}…{% endif %}</div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<p class="empty-state">No registry activity yet.</p>
+{% endif %}
+{% endmacro %}

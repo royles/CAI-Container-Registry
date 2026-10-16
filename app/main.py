@@ -7,6 +7,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from app.audit_log import RegistryAuditStore, list_registry_activity
 from app.auth import require_admin_api_key, require_local_registry_auth
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
@@ -48,6 +49,10 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> LocalRe
 
 def get_importer(settings: Annotated[Settings, Depends(get_settings)]) -> ImageImporter:
     return ImageImporter(settings)
+
+
+def get_audit(settings: Annotated[Settings, Depends(get_settings)]) -> RegistryAuditStore:
+    return RegistryAuditStore(settings.audit_log_dir)
 
 
 @app.get("/health/registry-upload")
@@ -144,6 +149,7 @@ class CreateRepositoryRequest(BaseModel):
 def create_repository(
     body: CreateRepositoryRequest,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
     name = body.name.strip()
@@ -151,6 +157,7 @@ def create_repository(
         storage.create_repository(name)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    audit.record_repo_create(name)
     return {"name": name, "tags": storage.list_tags(name)}
 
 
@@ -165,6 +172,7 @@ def rename_repository(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
     new_name = body.new_name.strip()
@@ -181,6 +189,7 @@ def rename_repository(
         raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_rename(name, new_name)
     return {
         "old_name": name,
         "new_name": new_name,
@@ -193,6 +202,7 @@ def rename_repository(
 def delete_repository(
     name: str,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
     try:
@@ -201,6 +211,7 @@ def delete_repository(
         raise HTTPException(status_code=404, detail=f"Repository not found: {name}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_repo_delete(name)
     return {"deleted": name}
 
 
@@ -234,7 +245,7 @@ def start_import(
         target_tag=body.target_tag,
         status="queued",
     )
-    importer.jobs.save(placeholder)
+    importer._save_job(placeholder)
     background.add_task(_run_import, importer, job_id, body)
     return {"job_id": job_id, "status": "queued"}
 
@@ -256,6 +267,17 @@ def import_sync(
         ),
     )
     return {"job": job.to_dict()}
+
+
+@app.get("/api/v1/audit/events")
+def list_audit_events(
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    _: None = Depends(require_admin_api_key),
+    limit: int = 100,
+) -> dict:
+    events = list_registry_activity(audit, settings.import_jobs_dir, limit=min(limit, 500))
+    return {"events": [e.to_dict() for e in events]}
 
 
 @app.get("/api/v1/import/jobs")

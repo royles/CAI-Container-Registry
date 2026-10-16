@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from app.audit_log import RegistryAuditStore
 from app.auth import require_local_registry_auth
 from app.config import Settings, get_settings
 from app.local_storage import LocalRegistryStorage
@@ -16,6 +17,10 @@ router = APIRouter(prefix="/v2", tags=["registry"])
 
 def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> LocalRegistryStorage:
     return LocalRegistryStorage(settings.registry_data_dir)
+
+
+def get_audit(settings: Annotated[Settings, Depends(get_settings)]) -> RegistryAuditStore:
+    return RegistryAuditStore(settings.audit_log_dir)
 
 
 @router.get("/")
@@ -55,6 +60,7 @@ async def get_manifest(
     reference: str,
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_local_registry_auth),
 ) -> Response:
     try:
@@ -79,6 +85,7 @@ async def get_manifest(
     headers["Content-Length"] = str(len(data))
     if request.method == "HEAD":
         return Response(status_code=200, headers=headers)
+    audit.record_pull(name, reference, digest)
     return Response(content=data, media_type=media_type, headers=headers)
 
 

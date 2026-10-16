@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from app.audit_log import RegistryAuditStore, list_registry_activity
 from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
@@ -63,6 +64,15 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> LocalRe
 
 def get_importer(settings: Annotated[Settings, Depends(get_settings)]) -> ImageImporter:
     return ImageImporter(settings)
+
+
+def get_audit(settings: Annotated[Settings, Depends(get_settings)]) -> RegistryAuditStore:
+    return RegistryAuditStore(settings.audit_log_dir)
+
+
+def _activity_for_ui(settings: Settings, *, limit: int = 50) -> list:
+    audit = RegistryAuditStore(settings.audit_log_dir)
+    return list_registry_activity(audit, settings.import_jobs_dir, limit=limit)
 
 
 def _verify_ui_admin(body: UIReplicateRequest, settings: Settings) -> None:
@@ -148,13 +158,13 @@ def manage_ui_home(
     importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    jobs = importer.jobs.list_jobs()[:20]
+    activity = _activity_for_ui(settings, limit=50)
     repos = _list_repos(storage)
     storage_stats = storage.stats()
     total_tags = sum(len(r["tags"]) for r in repos)
-    jobs_ok = sum(1 for j in jobs if j.status == "succeeded")
-    jobs_fail = sum(1 for j in jobs if j.status == "failed")
-    jobs_active = sum(1 for j in jobs if j.status in ("running", "queued", "pending"))
+    activity_ok = sum(1 for e in activity if e.status == "succeeded")
+    activity_fail = sum(1 for e in activity if e.status == "failed")
+    activity_active = sum(1 for e in activity if e.status in ("running", "queued", "pending"))
     return _render_ui_page(
         request,
         "home",
@@ -163,13 +173,13 @@ def manage_ui_home(
         page_lead="",
         storage=storage,
         settings=settings,
-        jobs=jobs,
+        activity=activity,
         overview={
             "total_tags": total_tags,
             "storage_stats": storage_stats,
-            "jobs_ok": jobs_ok,
-            "jobs_fail": jobs_fail,
-            "jobs_active": jobs_active,
+            "activity_ok": activity_ok,
+            "activity_fail": activity_fail,
+            "activity_active": activity_active,
         },
     )
 
@@ -186,10 +196,10 @@ def manage_ui_replicate(
         "replicate",
         active_nav="replicate",
         page_title="Replicate from remote",
-        page_lead="Import images from Cloudera or another OCI registry, and review recent replication jobs.",
+        page_lead="Import images from Cloudera or another OCI registry, and review the registry activity log.",
         storage=storage,
         settings=settings,
-        jobs=importer.jobs.list_jobs()[:20],
+        activity=_activity_for_ui(settings, limit=50),
     )
 
 
@@ -272,7 +282,7 @@ def ui_replicate(
         target_tag="*" if body.replicate_all_tags else (body.target_tag or "(auto)"),
         status="queued",
     )
-    importer.jobs.save(placeholder)
+    importer._save_job(placeholder)
     background.add_task(_run_replicate, importer, job_id, body)
     return {"job_id": job_id, "status": "queued"}
 
@@ -282,6 +292,7 @@ def ui_create_repository(
     body: UICreateRepositoryRequest,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
     name = body.name.strip()
@@ -289,6 +300,7 @@ def ui_create_repository(
         storage.create_repository(name)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    audit.record_repo_create(name)
     return {"name": name, "tags": storage.list_tags(name)}
 
 
@@ -299,6 +311,7 @@ def ui_rename_repository(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
     new_name = body.new_name.strip()
@@ -315,6 +328,7 @@ def ui_rename_repository(
         raise HTTPException(status_code=404, detail=f"Repository not found: {repository}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_rename(repository, new_name)
     return {"old_name": repository, "new_name": new_name, **rename_stats}
 
 
@@ -324,6 +338,7 @@ def ui_delete_repository(
     body: UIRepoMutation,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
     try:
@@ -332,6 +347,7 @@ def ui_delete_repository(
         raise HTTPException(status_code=404, detail=f"Repository not found: {repository}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_repo_delete(repository)
     return {"deleted": repository}
 
 

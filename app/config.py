@@ -36,6 +36,10 @@ class Settings(BaseSettings):
         default=Path("data/import_jobs"),
         validation_alias="IMPORT_JOBS_DIR",
     )
+    audit_log_dir: Path = Field(
+        default=Path("data/audit_log"),
+        validation_alias="AUDIT_LOG_DIR",
+    )
 
     @property
     def local_auth_enabled(self) -> bool:
@@ -47,4 +51,5 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.registry_data_dir.mkdir(parents=True, exist_ok=True)
     settings.import_jobs_dir.mkdir(parents=True, exist_ok=True)
+    settings.audit_log_dir.mkdir(parents=True, exist_ok=True)
     return settings

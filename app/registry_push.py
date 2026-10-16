@@ -9,6 +9,7 @@ from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from app.audit_log import RegistryAuditStore
 from app.auth import require_local_registry_auth
 from app.config import Settings, get_settings
 from app.local_storage import LocalRegistryStorage
@@ -28,6 +29,10 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> LocalRe
 
 def get_uploads(settings: Annotated[Settings, Depends(get_settings)]) -> BlobUploadStore:
     return BlobUploadStore(settings.registry_data_dir)
+
+
+def get_audit(settings: Annotated[Settings, Depends(get_settings)]) -> RegistryAuditStore:
+    return RegistryAuditStore(settings.audit_log_dir)
 
 
 def _registry_headers() -> dict[str, str]:
@@ -110,6 +115,7 @@ async def registry_write_dispatch(
     request: Request,
     uploads: Annotated[BlobUploadStore, Depends(get_uploads)],
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
     _: None = Depends(require_local_registry_auth),
 ) -> Response:
     """Parse docker push paths (e.g. local-repo/blobs/uploads/) explicitly."""
@@ -194,6 +200,7 @@ async def registry_write_dispatch(
                 manifest_digest = storage.put_manifest(repo, reference, manifest_bytes)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
+            audit.record_push(repo, reference, manifest_digest)
             headers = {
                 **_registry_headers(),
                 "Location": f"{external_base_url(request)}/v2/{repo}/manifests/{manifest_digest}",

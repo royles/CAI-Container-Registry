@@ -1,4 +1,5 @@
 {% extends "ui/layout.html" %}
+{% from "ui/_activity.html" import activity_table %}
 {% block title %}Replicate from remote — CAI Private Registry{% endblock %}
 {% block content %}
 <div class="card">
@@ -47,24 +48,9 @@
 </div>
 
 <div class="card" style="margin-top:16px;">
-  <h2 style="margin:0 0 12px;font-size:1.05rem;">Recent replication jobs</h2>
-  {% if jobs %}
-  <table>
-    <thead><tr><th>Status</th><th>Source</th><th>Target</th><th>Message</th></tr></thead>
-    <tbody>
-      {% for job in jobs %}
-      <tr>
-        <td class="status {{ job.status }}">{{ job.status }}</td>
-        <td><code>{{ job.source }}</code></td>
-        <td><code>{{ job.target_repo }}:{{ job.target_tag }}</code></td>
-        <td>{{ job.message }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="hint" style="margin:0;">No replication jobs yet.</p>
-  {% endif %}
+  <h2 style="margin:0 0 8px;font-size:1.05rem;">Registry activity log</h2>
+  <p class="hint" style="margin:0 0 12px;">Push, pull, replicate, rename, and repository create/delete events (newest first).</p>
+  {{ activity_table(activity, "No registry activity yet. Push an image, replicate from remote, or rename a repository.") }}
 </div>
 {% endblock %}
 {% block scripts %}

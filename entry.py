@@ -1,8 +1,26 @@
 """Cloudera AI Application entrypoint — binds the private registry to CDSW_APP_PORT."""
 
-import os
+from __future__ import annotations
 
-import uvicorn
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def _ensure_dependencies() -> None:
+    try:
+        import uvicorn  # noqa: F401
+    except ModuleNotFoundError:
+        requirements = Path(__file__).resolve().parent / "requirements.txt"
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", "-r", str(requirements)]
+        )
+
+
+_ensure_dependencies()
+
+import uvicorn  # noqa: E402  — installed above when missing from the engine image
 
 
 def main() -> None:

@@ -10,10 +10,9 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 
 ## Quick start (CAI engine / container)
 
-Use the Python interpreter already provided by the CAI session or application engine (no virtualenv).
+Use the Python interpreter already provided by the CAI session or application engine (no virtualenv). Dependencies from `requirements.txt` are installed by [`cdsw-build.sh`](cdsw-build.sh) during the CAI build step; `entry.py` also installs them on first start if they are not yet present.
 
 ```bash
-pip install -r requirements.txt
 python3 entry.py
 ```
 
@@ -21,7 +20,7 @@ python3 entry.py
 
 ## Cloudera AI Application setup
 
-1. Add this project to CAI (Git or template).
+1. Add this project to CAI (Git or template). Ensure [`cdsw-build.sh`](cdsw-build.sh) is present so dependencies install when the project engine is built.
 2. Set project or application environment variables (see [.env.example](.env.example)):
    - `REGISTRY_DATA_DIR=data/registry` — keep under the project tree for persistence
    - `LOCAL_REGISTRY_USERNAME` / `LOCAL_REGISTRY_PASSWORD` — optional Basic auth for `/v2/`

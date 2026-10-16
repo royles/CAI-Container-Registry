@@ -1,0 +1,51 @@
+{% extends "ui/layout.html" %}
+{% block title %}{{ repository }}:{{ tag }} — CAI Private Registry{% endblock %}
+{% block page_h1 %}<code>{{ repository }}:{{ tag }}</code>{% endblock %}
+{% block page_lead %}Image asset detail · <a href="/ui/browser/repositories/{{ repository }}/tags/{{ tag }}">Open in storage browser</a>{% endblock %}
+{% block content %}
+<div class="card" style="background:#fff8e6;border-color:#f5d98a;">
+  Container images are served via the <strong>Registry HTTP API</strong> (<code>/v2/</code>), not as HTML at
+  <code>/{{ repository }}:{{ tag }}</code>. Bytes live under <code>{{ data_dir }}/</code>.
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:1.05rem;">Cloudera Runtime Catalog</h2>
+  <p class="hint">Image field (no <code>https://</code>): <code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
+  {% if cloudera_meta.cloudera_labels_missing %}
+  <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
+  {% elif cloudera_meta.ok %}
+  <p class="hint" style="color:#067647;">Runtime labels present. Diagnostics: <code>{{ diagnostics_url }}</code></p>
+  {% endif %}
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:1.05rem;">Registry API</h2>
+  <ul class="hint">
+    <li>Manifest: <code>{{ manifest_url }}</code></li>
+    <li>Tags list: <code>{{ tags_list_url }}</code></li>
+    <li>Reference: <code>{{ image_ref }}</code></li>
+  </ul>
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:1.05rem;">On-disk layout</h2>
+  <table>
+    <tr><th>Role</th><th>Relative path</th></tr>
+    <tr><td>Repository metadata</td><td><code>{{ detail.repo_metadata_relative_path }}/</code></td></tr>
+    <tr><td>Tag pointer</td><td><code>{{ detail.tag_link_relative_path }}</code></td></tr>
+    <tr><td>Manifest blob</td><td><code>{{ detail.manifest_relative_path }}</code> (<code>{{ detail.manifest_digest }}</code>)</td></tr>
+  </table>
+  {% if detail.blobs %}
+  <h3>Layers &amp; config</h3>
+  <table>
+    <thead><tr><th>Digest</th><th>File</th><th>Size</th></tr></thead>
+    <tbody>
+      {% for b in detail.blobs %}
+      <tr>
+        <td><code>{{ b.digest }}</code></td>
+        <td><code>{{ b.relative_path }}</code></td>
+        <td>{% if b.size_bytes is defined %}{{ b.size_bytes }} bytes{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

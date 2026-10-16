@@ -1,0 +1,90 @@
+{% extends "ui/layout.html" %}
+{% block title %}Registry API — CAI Private Registry{% endblock %}
+{% block content %}
+<div class="card api-card">
+  <p class="hint" style="margin-top:0;">Use these endpoints for <code>docker pull</code>, <code>docker push</code>, Runtime Catalog validation, and automation. <span class="badge">OCI / Docker V2</span></p>
+  <details class="endpoint" open>
+    <summary>Registry API base</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
+      <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
+      <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>).</p>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Catalog</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
+      <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Example manifest URL</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
+      <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
+      <p class="endpoint-desc">Asset page: <code>/repos/&lt;repository&gt;/tags/&lt;tag&gt;</code></p>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Image reference</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
+      <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Management JSON API</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
+      <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Health</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url" id="url-health">{{ health_url }}</code>
+      <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Authentication</summary>
+    <div class="endpoint-body">
+      {% if local_auth_enabled %}
+      <p class="endpoint-desc">HTTP Basic — username <code>{{ local_registry_username }}</code> (<code>LOCAL_REGISTRY_PASSWORD</code>).</p>
+      {% else %}
+      <p class="endpoint-desc">Not enabled. Set <code>LOCAL_REGISTRY_*</code> to protect <code>/v2/</code>.</p>
+      {% endif %}
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Push from Docker</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url">docker login {{ registry_host }}</code>
+      <p class="endpoint-desc"><code>docker tag</code> / <code>docker push {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code></p>
+    </div>
+  </details>
+  <details class="endpoint">
+    <summary>Cloudera Runtime Catalog</summary>
+    <div class="endpoint-body">
+      <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
+      <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code> — no <code>https://</code></p>
+    </div>
+  </details>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(btn.dataset.copy);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+        const prev = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = prev; }, 1500);
+      });
+    });
+  });
+</script>
+{% endblock %}

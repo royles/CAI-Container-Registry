@@ -1,0 +1,45 @@
+{% extends "ui/layout.html" %}
+{% block title %}{{ browse.title }} — Storage browser{% endblock %}
+{% block page_h1 %}{{ browse.title }}{% endblock %}
+{% block page_lead %}Navigate registry metadata and content-addressed blobs. Each folder opens on its own page.{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  {% for crumb in browse.breadcrumbs %}
+    {% if not loop.last %}
+      <a href="{{ browser_href(crumb.path) }}">{{ crumb.label }}</a><span class="sep">/</span>
+    {% else %}
+      <span aria-current="page">{{ crumb.label }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
+{% if browse.note %}
+<p class="hint">{{ browse.note }}</p>
+{% endif %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Kind</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in browse.entries %}
+      <tr>
+        <td>
+          {% if entry.href %}
+            <a href="{{ entry.href }}"><strong>{{ entry.name }}</strong></a>
+          {% elif entry.name.startswith('(') %}
+            {{ entry.name }}
+          {% else %}
+            <a href="{{ browser_href(entry.path) }}"><strong>{{ entry.name }}</strong></a>
+          {% endif %}
+        </td>
+        <td><span class="kind-badge">{{ entry.kind }}</span></td>
+        <td class="hint">
+          {% if entry.size_bytes is not none %}{{ entry.size_bytes }} bytes{% if entry.detail %} · {% endif %}{% endif %}
+          {% if entry.detail %}<code style="word-break:break-all;">{{ entry.detail }}</code>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
 from app.upload_store import BlobUploadStore
 from app.remote_client import RemoteRegistryAuth
+from app.storage_browser import browse_storage, storage_browser_href
 
 templates = Jinja2Templates(directory="app/templates")
 router = APIRouter(tags=["ui"])
@@ -84,72 +85,95 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
-_UI_VIEWS = frozenset({"home", "replicate", "repositories", "jobs", "api"})
-
-
-def _render_manage_ui(
-    request: Request,
-    storage: LocalRegistryStorage,
-    importer: ImageImporter,
-    settings: Settings,
-    *,
-    initial_view: str | None = None,
-) -> HTMLResponse:
+def _list_repos(storage: LocalRegistryStorage) -> list[dict]:
     repos = []
     for name in storage.list_repositories():
         repos.append({"name": name, "tags": storage.list_tags(name)})
-    jobs = importer.jobs.list_jobs()[:20]
+    return repos
+
+
+def _ui_common_context(
+    request: Request,
+    storage: LocalRegistryStorage,
+    settings: Settings,
+) -> dict:
+    repos = _list_repos(storage)
     base = str(request.base_url).rstrip("/")
     registry_host = settings.public_registry_host or request.url.netloc
     example_repo = repos[0]["name"] if repos else "my-team/my-image"
     example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
-    if initial_view is None:
-        initial_view = request.query_params.get("view", "home")
-    if initial_view not in _UI_VIEWS:
-        initial_view = "home"
-    return templates.TemplateResponse(
-        request,
-        "manage.html",
-        {
-            "initial_view": initial_view,
-            "repositories": repos,
-            "jobs": jobs,
-            "data_dir": str(settings.registry_data_dir),
-            "app_api_key_required": bool(settings.app_api_key),
-            "app_root_url": f"{base}/",
-            "registry_v2_url": f"{base}/v2/",
-            "catalog_url": f"{base}/v2/_catalog",
-            "health_url": f"{base}/health",
-            "management_api_url": f"{base}/api/v1/",
-            "registry_host": registry_host,
-            "local_auth_enabled": settings.local_auth_enabled,
-            "local_registry_username": settings.local_registry_username,
-            "example_manifest_url": f"{base}/v2/{example_repo}/manifests/{example_tag}",
-            "example_image_ref": f"{registry_host}/{example_repo}:{example_tag}",
-        },
+    return {
+        "repositories": repos,
+        "data_dir": str(settings.registry_data_dir),
+        "app_api_key_required": bool(settings.app_api_key),
+        "registry_v2_url": f"{base}/v2/",
+        "catalog_url": f"{base}/v2/_catalog",
+        "health_url": f"{base}/health",
+        "management_api_url": f"{base}/api/v1/",
+        "registry_host": registry_host,
+        "local_auth_enabled": settings.local_auth_enabled,
+        "local_registry_username": settings.local_registry_username,
+        "example_manifest_url": f"{base}/v2/{example_repo}/manifests/{example_tag}",
+        "example_image_ref": f"{registry_host}/{example_repo}:{example_tag}",
+        "browser_href": storage_browser_href,
+    }
+
+
+def _render_ui_page(
+    request: Request,
+    template: str,
+    *,
+    active_nav: str,
+    page_title: str,
+    page_lead: str,
+    storage: LocalRegistryStorage,
+    settings: Settings,
+    **extra,
+) -> HTMLResponse:
+    context = _ui_common_context(request, storage, settings)
+    context.update(
+        active_nav=active_nav,
+        page_title=page_title,
+        page_lead=page_lead,
+        **extra,
     )
+    return templates.TemplateResponse(request, f"ui/{template}.html", context)
 
 
 @router.get("/", response_class=HTMLResponse)
 @router.get("/ui", response_class=HTMLResponse)
-def manage_ui(
+def manage_ui_home(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    return _render_manage_ui(request, storage, importer, settings)
+    return _render_ui_page(
+        request,
+        "home",
+        active_nav="home",
+        page_title="Overview",
+        page_lead="Your project-local container registry on this application URL.",
+        storage=storage,
+        settings=settings,
+        jobs=importer.jobs.list_jobs()[:20],
+    )
 
 
 @router.get("/ui/replicate", response_class=HTMLResponse)
 def manage_ui_replicate(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    return _render_manage_ui(
-        request, storage, importer, settings, initial_view="replicate"
+    return _render_ui_page(
+        request,
+        "replicate",
+        active_nav="replicate",
+        page_title="Replicate from a remote repository",
+        page_lead="Import images from Cloudera or another OCI registry into this project-local private registry.",
+        storage=storage,
+        settings=settings,
     )
 
 
@@ -157,11 +181,16 @@ def manage_ui_replicate(
 def manage_ui_repositories(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    return _render_manage_ui(
-        request, storage, importer, settings, initial_view="repositories"
+    return _render_ui_page(
+        request,
+        "repositories",
+        active_nav="repositories",
+        page_title="Repository names",
+        page_lead="Create empty repositories or manage names, tags, and metadata on disk.",
+        storage=storage,
+        settings=settings,
     )
 
 
@@ -172,17 +201,57 @@ def manage_ui_jobs(
     importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    return _render_manage_ui(request, storage, importer, settings, initial_view="jobs")
+    return _render_ui_page(
+        request,
+        "jobs",
+        active_nav="jobs",
+        page_title="Recent replication jobs",
+        page_lead="Status of recent import jobs started from this console or the JSON API.",
+        storage=storage,
+        settings=settings,
+        jobs=importer.jobs.list_jobs()[:20],
+    )
 
 
 @router.get("/ui/api", response_class=HTMLResponse)
 def manage_ui_api(
     request: Request,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
-    return _render_manage_ui(request, storage, importer, settings, initial_view="api")
+    return _render_ui_page(
+        request,
+        "api",
+        active_nav="api",
+        page_title="Container registry API",
+        page_lead="Endpoints and references for docker, Runtime Catalog, and automation.",
+        storage=storage,
+        settings=settings,
+    )
+
+
+@router.get("/ui/browser", response_class=HTMLResponse)
+@router.get("/ui/browser/{storage_path:path}", response_class=HTMLResponse)
+def manage_ui_browser(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    storage_path: str = "",
+) -> HTMLResponse:
+    try:
+        browse = browse_storage(storage, storage_path)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _render_ui_page(
+        request,
+        "browser",
+        active_nav="browser",
+        page_title=browse.title,
+        page_lead="Navigate registry metadata and content-addressed blobs.",
+        storage=storage,
+        settings=settings,
+        browse=browse,
+    )
 
 
 @router.post("/ui/replicate")
@@ -303,22 +372,24 @@ def repo_tag_detail(
 
     base = str(request.base_url).rstrip("/")
     registry_host = settings.public_registry_host or request.url.netloc
-    return templates.TemplateResponse(
+    return _render_ui_page(
         request,
-        "repo_detail.html",
-        {
-            "repository": repository,
-            "tag": tag,
-            "detail": detail,
-            "data_dir": str(settings.registry_data_dir),
-            "manifest_url": f"{base}/v2/{repository}/manifests/{tag}",
-            "tags_list_url": f"{base}/v2/{repository}/tags/list",
-            "image_ref": f"{registry_host}/{repository}:{tag}",
-            "runtime_catalog_ref": f"{registry_host}/{repository}:{tag}",
-            "registry_host": registry_host,
-            "cloudera_meta": cloudera_meta,
-            "diagnostics_url": f"{base}/api/v1/diagnostics/runtime-catalog/{repository}/{tag}",
-        },
+        "repo_detail",
+        active_nav="repositories",
+        page_title=f"{repository}:{tag}",
+        page_lead="Image asset detail.",
+        storage=storage,
+        settings=settings,
+        repository=repository,
+        tag=tag,
+        detail=detail,
+        manifest_url=f"{base}/v2/{repository}/manifests/{tag}",
+        tags_list_url=f"{base}/v2/{repository}/tags/list",
+        image_ref=f"{registry_host}/{repository}:{tag}",
+        runtime_catalog_ref=f"{registry_host}/{repository}:{tag}",
+        registry_host=registry_host,
+        cloudera_meta=cloudera_meta,
+        diagnostics_url=f"{base}/api/v1/diagnostics/runtime-catalog/{repository}/{tag}",
     )
 
 

@@ -1,0 +1,106 @@
+{% extends "ui/layout.html" %}
+{% block title %}Replicate — CAI Private Registry{% endblock %}
+{% block content %}
+<div class="card">
+  <form id="replicateForm">
+    <label for="source">Remote image or repository</label>
+    <input id="source" name="source" type="text" required
+      placeholder="docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8" />
+    <div class="row">
+      <div>
+        <label for="target_repo">Local repository name</label>
+        <input id="target_repo" name="target_repo" type="text"
+          placeholder="cloudera/ml-runtime-jupyterlab-python3.10-standard" />
+        <p class="hint">Leave blank to keep the same path as the remote repository.</p>
+      </div>
+      <div>
+        <label for="target_tag">Local tag (single-tag mode)</label>
+        <input id="target_tag" name="target_tag" type="text" placeholder="2023.08.2-b8" />
+        <p class="hint">Ignored when replicating all tags.</p>
+      </div>
+    </div>
+    <div class="checkbox">
+      <input id="replicate_all_tags" name="replicate_all_tags" type="checkbox" />
+      <label for="replicate_all_tags">Replicate all tags from the remote repository</label>
+    </div>
+    <h3 style="margin-top:20px;font-size:1rem;">Remote credentials</h3>
+    <div class="row">
+      <div>
+        <label for="remote_username">Username</label>
+        <input id="remote_username" name="remote_username" type="text" autocomplete="username" />
+      </div>
+      <div>
+        <label for="remote_password">Password or token</label>
+        <input id="remote_password" name="remote_password" type="password" autocomplete="current-password" />
+      </div>
+    </div>
+    <label for="remote_token">Bearer token (optional, instead of username/password)</label>
+    <input id="remote_token" name="remote_token" type="password" autocomplete="off" />
+    {% if app_api_key_required %}
+    <label for="app_api_key">Admin API key</label>
+    <input id="app_api_key" name="app_api_key" type="password" required />
+    <p class="hint">Set via <code>APP_API_KEY</code> in the application environment.</p>
+    {% endif %}
+    <button type="submit" class="primary" id="submitBtn">Start replication</button>
+    <div id="jobStatus" class="status-banner"></div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const form = document.getElementById("replicateForm");
+  const jobStatus = document.getElementById("jobStatus");
+  const submitBtn = document.getElementById("submitBtn");
+  function showStatus(text, isError) {
+    jobStatus.style.display = "block";
+    jobStatus.textContent = text;
+    jobStatus.classList.toggle("error", !!isError);
+  }
+  async function pollJob(jobId) {
+    for (let i = 0; i < 360; i++) {
+      const res = await fetch(`/ui/jobs/${jobId}`);
+      if (!res.ok) throw new Error("Failed to fetch job status");
+      const data = await res.json();
+      const job = data.job;
+      showStatus(`Job ${job.id.slice(0, 8)}… ${job.status}: ${job.message || "working…"}`);
+      if (job.status === "succeeded" || job.status === "failed") {
+        if (job.status === "succeeded") setTimeout(() => location.assign("/ui/jobs"), 1200);
+        return;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    showStatus("Job is still running; open Recent replication jobs for updates.", false);
+  }
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    showStatus("Starting replication…", false);
+    const payload = {
+      source: form.source.value.trim(),
+      target_repo: form.target_repo.value.trim() || null,
+      target_tag: form.target_tag.value.trim() || null,
+      replicate_all_tags: form.replicate_all_tags.checked,
+      remote_username: form.remote_username.value.trim() || null,
+      remote_password: form.remote_password.value || null,
+      remote_token: form.remote_token.value || null,
+    };
+    {% if app_api_key_required %}
+    payload.app_api_key = form.app_api_key.value;
+    {% endif %}
+    try {
+      const res = await fetch("/ui/replicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Replication request failed");
+      await pollJob(data.job_id);
+    } catch (err) {
+      showStatus(err.message || String(err), true);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

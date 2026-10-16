@@ -8,6 +8,14 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 - Management UI at `/ui` — remote source, credentials, single-tag or all-tags replication
 - JSON API for automation (`/api/v1/import`, `/api/v1/repositories`, …)
 
+## Push from remote a new container
+
+```bash
+docker build -t cai-r34-honestdid:v4 .   
+docker tag cai-r34-honestdid:v4 [r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4](http://r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4)       
+docker push [r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4](http://r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v4) 
+```
+
 ## Quick start (CAI engine / container)
 
 Use the Python interpreter already provided by the CAI session or application engine (no virtualenv). Dependencies from `requirements.txt` are installed by [`cdsw-build.sh`](cdsw-build.sh) during the CAI build step; `entry.py` also installs them on first start if they are not yet present.
@@ -28,13 +36,14 @@ python3 entry.py
 3. **Applications → New Application**
    - Script: `entry.py` (run as the application script — do not paste `main()` into a notebook cell)
    - Subdomain: e.g. `registry-app`
-   - Bind: listens on **`127.0.0.1`** and **`CDSW_APP_PORT`** (Cloudera proxies the application subdomain to this port)
+   - Bind: listens on `127.0.0.1` and `CDSW_APP_PORT` (Cloudera proxies the application subdomain to this port)
 4. Test in a session with `!python3 entry.py` or **Run** on `entry.py`, not by calling `main()` inside Jupyter (that causes “asyncio.run() cannot be called from a running event loop”).
 
 ## Replicate from Cloudera (UI)
 
 1. Open `https://<subdomain>.<your-cai-domain>/`
-2. Enter the remote image, e.g.  
+2. Enter the remote image, e.g.
+
    `docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8`
 3. Provide remote username/password or token if the registry is private.
 4. Choose a local repository name (or leave blank to mirror the remote path).
@@ -72,14 +81,14 @@ Do **not** use:
 - `https://` at the start
 - A browser-style path such as `https://…/local-repo:v3` (that is not the OCI registry protocol)
 
-Cloudera’s validator calls `https://<host>/v2/` and `https://<host>/v2/local-repo/manifests/v3` on the registry host. Add **Site Administration → Runtimes → Docker Credentials** for that host when `LOCAL_REGISTRY_*` auth is enabled. Custom runtimes must be images that still contain Cloudera ML runtime metadata in the image config (replicate from an official Cloudera runtime tag).
+Cloudera’s validator calls `https://<host>/v2/` and `https://<host>/v2/local-repo/manifests/v3` on the registry host. Add **Site Administration → Runtimes → Docker Credentials** for that host when `LOCAL_REGISTRY_`* auth is enabled. Custom runtimes must be images that still contain Cloudera ML runtime metadata in the image config (replicate from an official Cloudera runtime tag).
 
 ### Still “Could not fetch the image metadata”?
 
 Validate runs from the **runtime-manager** pod (cluster), not your browser. Work through:
 
 1. **Application running** — subdomain must serve `/v2/` (open `https://<host>/v2/` in a CAI session; expect `{}` or 401 with Basic challenge).
-2. **Docker credentials** — Site Administration → Runtimes → server name exactly `r78blo2186uifm7m….cloudera.site` (no `https://`), username/password matching `LOCAL_REGISTRY_*` if set.
+2. **Docker credentials** — Site Administration → Runtimes → server name exactly `r78blo2186uifm7m….cloudera.site` (no `https://`), username/password matching `LOCAL_REGISTRY_`* if set.
 3. **TLS trust** — runtime-manager must trust the app certificate (Root CA Configuration; known issue if custom CA — see Cloudera ML runtimes release notes for runtime-manager cert mount).
 4. **Cloudera labels** — `GET /api/v1/diagnostics/runtime-catalog/local-repo/v3` on the app (or the repo detail page) checks config labels locally.
 

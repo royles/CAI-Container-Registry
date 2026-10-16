@@ -14,11 +14,10 @@ Use the Python interpreter already provided by the CAI session or application en
 
 ```bash
 pip install -r requirements.txt
-export CDSW_APP_PORT=8090
 python3 entry.py
 ```
 
-Open `http://localhost:${CDSW_APP_PORT}/ui` (or the application subdomain URL when deployed as an Analytical Application).
+`CDSW_APP_PORT` is set by the CAI session or application engine; do not override it. Open the application subdomain URL (or the session proxy URL) at `/ui`.
 
 ## Cloudera AI Application setup
 

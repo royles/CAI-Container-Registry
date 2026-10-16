@@ -159,4 +159,29 @@ def inspect_cloudera_runtime_metadata(storage: LocalRegistryStorage, repo: str, 
             if not found
             else "Config contains Cloudera runtime labels; if Validate still fails, check runtime-manager reachability/TLS/credentials."
         ),
+        "version_catalog_rule": (
+            "full_version must start with short_version + '.' + maintenance_version; maintenance_version must be an integer."
+        ),
+        "version_check": _version_triple_check(summary),
+    }
+
+
+def _version_triple_check(summary: dict[str, str | None]) -> dict[str, Any]:
+    short = summary.get("short_version") or ""
+    maint = summary.get("maintenance_version") or ""
+    full = summary.get("full_version") or ""
+    if not short or not maint:
+        return {"ok": None, "message": "short_version and maintenance_version not both set"}
+    if not maint.isdigit():
+        return {
+            "ok": False,
+            "message": "maintenance_version must be an integer",
+            "expected_full_prefix": f"{short}.{maint}",
+        }
+    expected = f"{short}.{maint}"
+    ok = full.startswith(expected) if full else False
+    return {
+        "ok": ok,
+        "expected_full_prefix": expected,
+        "message": "OK" if ok else f"full_version should start with '{expected}'",
     }

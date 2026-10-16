@@ -30,10 +30,13 @@
 <div class="card" id="runtime-labels">
   <h2 style="margin-top:0;font-size:1.05rem;">Edit runtime labels</h2>
   <p class="hint" style="margin-top:0;">
-    Updates both <code>ML_RUNTIME_*</code> and <code>com.cloudera.ml.runtime.*</code> on the image config,
-    rewrites config and manifest blobs, and relinks this tag. Multi-arch indexes update every platform manifest.
-    Use a unique edition/version before registering in Runtime Catalog again.
+    Updates <code>ML_RUNTIME_*</code> labels and matching <code>Env</code> entries, rewrites config/manifest blobs,
+    and relinks this tag. Multi-arch indexes update every platform manifest.
+    <strong>Runtime Catalog rule:</strong> <code>full_version</code> must be
+    <code>{short_version}.{maintenance_version}</code> (maintenance must be an integer, e.g. <code>1</code>).
+    Save auto-aligns <code>full_version</code> when short and maintenance are set. Use a unique <strong>edition</strong> for custom runtimes.
   </p>
+  <p class="hint" id="computedFullHint" style="display:none;margin-top:8px;"></p>
   <form id="runtimeLabelsForm">
     <div class="row">
       <div>
@@ -111,6 +114,22 @@
     const repoEnc = repo.split("/").map(encodeURIComponent).join("/");
     return `${base}/${repoEnc}/tags/${encodeURIComponent(tag)}/runtime-labels`;
   }
+  function refreshFullHint() {
+    const shortV = document.getElementById("short_version").value.trim();
+    const maintV = document.getElementById("maintenance_version").value.trim();
+    const hint = document.getElementById("computedFullHint");
+    if (shortV && maintV && /^[0-9]+$/.test(maintV)) {
+      hint.style.display = "block";
+      hint.textContent = `Catalog expects full_version to start with: ${shortV}.${maintV}`;
+    } else {
+      hint.style.display = "none";
+    }
+  }
+  ["short_version", "maintenance_version"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", refreshFullHint);
+  });
+  refreshFullHint();
+
   runtimeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const payload = {

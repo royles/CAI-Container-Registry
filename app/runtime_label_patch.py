@@ -15,6 +15,63 @@ _MANIFEST_LIST_TYPES = {
 
 ALLOWED_RUNTIME_FIELDS = frozenset(RUNTIME_LABEL_FIELDS.keys())
 
+_FIELD_TO_ENV: dict[str, str] = {
+    "edition": "ML_RUNTIME_EDITION",
+    "full_version": "ML_RUNTIME_FULL_VERSION",
+    "short_version": "ML_RUNTIME_SHORT_VERSION",
+    "maintenance_version": "ML_RUNTIME_MAINTENANCE_VERSION",
+}
+
+
+def canonical_full_version(short_version: str, maintenance_version: str) -> str:
+    """Cloudera pattern: ML_RUNTIME_FULL_VERSION = short + '.' + maintenance (see ML runtimes docs)."""
+    return f"{short_version}.{maintenance_version}"
+
+
+def normalize_runtime_version_fields(fields: dict[str, str]) -> dict[str, str]:
+    """
+    Enforce Runtime Catalog version rules on merged edition/version fields.
+    Mutates and returns fields.
+    """
+    short = (fields.get("short_version") or "").strip()
+    maint = (fields.get("maintenance_version") or "").strip()
+    if maint and not maint.isdigit():
+        raise ValueError(
+            "maintenance_version must be an integer (e.g. 1, 2). "
+            "Values like 'b8' belong in short_version, not maintenance_version."
+        )
+    if short and maint:
+        expected_full = canonical_full_version(short, maint)
+        full = (fields.get("full_version") or "").strip()
+        if full and not full.startswith(expected_full):
+            raise ValueError(
+                f"full_version must start with '{expected_full}' "
+                f"(short_version + '.' + maintenance_version). Current full_version is '{full}'."
+            )
+        fields["full_version"] = expected_full
+    return fields
+
+
+def prepare_runtime_label_updates(
+    storage: LocalRegistryStorage,
+    repo: str,
+    tag: str,
+    updates: dict[str, str],
+) -> dict[str, str]:
+    """Merge with existing config labels, normalize versions, return full field set to write."""
+    from app.cloudera_metadata import inspect_cloudera_runtime_metadata
+
+    meta = inspect_cloudera_runtime_metadata(storage, repo, tag)
+    if meta.get("error") and not meta.get("all_config_labels"):
+        raise ValueError(str(meta.get("error") or "Could not read image config"))
+    current = runtime_fields_from_labels(meta.get("all_config_labels") or {})
+    merged = dict(current)
+    merged.update(updates)
+    merged = {k: v.strip() for k, v in merged.items() if v and str(v).strip()}
+    if not merged:
+        raise ValueError("No runtime label updates provided")
+    return normalize_runtime_version_fields(merged)
+
 
 def runtime_fields_from_labels(labels: dict[str, str]) -> dict[str, str]:
     """Unified edition/version fields for forms (prefer com.cloudera keys when both set)."""
@@ -64,6 +121,29 @@ def _apply_runtime_updates_to_labels(
     return changed
 
 
+def _apply_runtime_updates_to_env(config: dict[str, Any], updates: dict[str, str]) -> bool:
+    cfg = config.get("config")
+    if not isinstance(cfg, dict):
+        return False
+    env = cfg.get("Env")
+    if not isinstance(env, list):
+        return False
+    changed = False
+    for field, env_key in _FIELD_TO_ENV.items():
+        if field not in updates:
+            continue
+        value = updates[field]
+        prefix = f"{env_key}="
+        for i, entry in enumerate(env):
+            if isinstance(entry, str) and entry.startswith(prefix):
+                new_entry = f"{env_key}={value}"
+                if entry != new_entry:
+                    env[i] = new_entry
+                    changed = True
+                break
+    return changed
+
+
 def _patch_config_bytes(config_bytes: bytes, updates: dict[str, str]) -> tuple[bytes, bool]:
     try:
         config = json.loads(config_bytes.decode("utf-8"))
@@ -73,11 +153,13 @@ def _patch_config_bytes(config_bytes: bytes, updates: dict[str, str]) -> tuple[b
         return config_bytes, False
 
     labels = _config_labels_block(config)
-    if not _apply_runtime_updates_to_labels(labels, updates):
-        return config_bytes, False
-
+    labels_changed = _apply_runtime_updates_to_labels(labels, updates)
     if isinstance(config.get("Labels"), dict):
-        _apply_runtime_updates_to_labels(config["Labels"], updates)
+        labels_changed = _apply_runtime_updates_to_labels(config["Labels"], updates) or labels_changed
+    env_changed = _apply_runtime_updates_to_env(config, updates)
+
+    if not labels_changed and not env_changed:
+        return config_bytes, False
 
     return json.dumps(config, separators=(",", ":"), sort_keys=True).encode("utf-8"), True
 
@@ -174,7 +256,7 @@ def patch_image_tag_runtime_labels(
     Apply runtime label field updates to every config in the tag's manifest tree,
     write new blobs, and relink the tag to the new top-level manifest.
     """
-    normalized: dict[str, str] = {}
+    partial: dict[str, str] = {}
     for key, value in updates.items():
         if key not in ALLOWED_RUNTIME_FIELDS:
             raise ValueError(f"Unknown runtime field: {key}")
@@ -182,9 +264,11 @@ def patch_image_tag_runtime_labels(
             continue
         stripped = str(value).strip()
         if stripped:
-            normalized[key] = stripped
-    if not normalized:
+            partial[key] = stripped
+    if not partial:
         raise ValueError("No runtime label updates provided")
+
+    normalized = prepare_runtime_label_updates(storage, repo, tag, partial)
 
     old_digest, manifest_bytes = storage.resolve_tag(repo, tag)
     media_type = _manifest_media_type(manifest_bytes)

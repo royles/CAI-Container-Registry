@@ -73,6 +73,20 @@
     button.btn-inline { margin-top: 0; padding: 6px 10px; font-size: 13px; border-radius: 8px; cursor: pointer; }
     button.btn-secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
     button.btn-danger { background: #fff; color: #b42318; border: 1px solid #fecdca; }
+    button.btn-danger:disabled, button.btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.btn-lock {
+      background: #fff; border: 1px solid #e3e6ea; border-radius: 8px; padding: 6px 8px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: #5c6570;
+    }
+    button.btn-lock.locked { color: #b34d02; border-color: #f5d98a; background: #fff8e6; }
+    button.btn-lock:hover { border-color: var(--accent); color: var(--accent); }
+    .registry-modal-btn {
+      border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; border: 1px solid transparent;
+    }
+    .registry-modal-btn.secondary { background: #fff; border-color: #cfd5df; color: #3c3c3c; }
+    .registry-modal-btn.primary { background: var(--accent); color: #fff; }
+    .registry-modal-btn.danger { background: #b42318; color: #fff; }
+    .registry-modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
     .inline-form input[type=text] { flex: 1; min-width: 160px; margin: 0; }

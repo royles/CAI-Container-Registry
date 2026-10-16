@@ -31,6 +31,7 @@ from app.repo_rename import registry_host_candidates, rename_repository_with_dep
 from app.upload_store import BlobUploadStore
 from app.remote_client import RemoteRegistryAuth
 from app.registry_gc import run_garbage_collection
+from app.repository_locks import RepositoryLockStore, assert_repository_unlocked
 from app.storage_browser import browse_storage, storage_browser_href
 
 templates = Jinja2Templates(directory="app/templates")
@@ -38,6 +39,11 @@ router = APIRouter(tags=["ui"])
 
 
 class UIRepoMutation(BaseModel):
+    app_api_key: str | None = None
+
+
+class UIDeleteRepositoryRequest(BaseModel):
+    confirm_name: str
     app_api_key: str | None = None
 
 
@@ -101,6 +107,10 @@ def get_audit(settings: Annotated[Settings, Depends(get_settings)]) -> RegistryA
     return RegistryAuditStore(settings.audit_log_dir)
 
 
+def get_lock_store(settings: Annotated[Settings, Depends(get_settings)]) -> RepositoryLockStore:
+    return RepositoryLockStore(settings.repository_locks_file)
+
+
 def _activity_for_ui(settings: Settings, *, limit: int = 50) -> list:
     audit = RegistryAuditStore(settings.audit_log_dir)
     return list_registry_activity(audit, settings.import_jobs_dir, limit=limit)
@@ -126,7 +136,11 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
-def _list_repos(storage: LocalRegistryStorage, registry_host: str) -> list[dict]:
+def _list_repos(
+    storage: LocalRegistryStorage,
+    registry_host: str,
+    lock_store: RepositoryLockStore | None = None,
+) -> list[dict]:
     repos = []
     for name in storage.list_repositories():
         tag_details = [tag_detail_with_refs(storage, registry_host, name, tag) for tag in storage.list_tags(name)]
@@ -135,6 +149,7 @@ def _list_repos(storage: LocalRegistryStorage, registry_host: str) -> list[dict]
                 "name": name,
                 "tags": [t["name"] for t in tag_details],
                 "tag_details": tag_details,
+                "locked": lock_store.is_locked(name) if lock_store else False,
             }
         )
     return repos
@@ -144,9 +159,11 @@ def _ui_common_context(
     request: Request,
     storage: LocalRegistryStorage,
     settings: Settings,
+    lock_store: RepositoryLockStore | None = None,
 ) -> dict:
     registry_host = settings.public_registry_host or request.url.netloc
-    repos = _list_repos(storage, registry_host)
+    store = lock_store or RepositoryLockStore(settings.repository_locks_file)
+    repos = _list_repos(storage, registry_host, store)
     base = str(request.base_url).rstrip("/")
     example_repo = repos[0]["name"] if repos else "my-team/my-image"
     example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
@@ -414,6 +431,11 @@ def ui_rename_repository(
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
     new_name = body.new_name.strip()
+    locks = RepositoryLockStore(settings.repository_locks_file)
+    try:
+        assert_repository_unlocked(locks, repository)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         rename_stats = rename_repository_with_dependent_metadata(
             storage,
@@ -431,15 +453,49 @@ def ui_rename_repository(
     return {"old_name": repository, "new_name": new_name, **rename_stats}
 
 
+@router.post("/ui/repositories/{repository:path}/lock")
+def ui_lock_repository(
+    repository: str,
+    body: UIRepoMutation,
+    settings: Annotated[Settings, Depends(get_settings)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    lock_store.lock(repository)
+    return {"repository": repository, "locked": True}
+
+
+@router.post("/ui/repositories/{repository:path}/unlock")
+def ui_unlock_repository(
+    repository: str,
+    body: UIRepoMutation,
+    settings: Annotated[Settings, Depends(get_settings)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
+) -> dict:
+    _verify_ui_admin_key(body.app_api_key, settings)
+    lock_store.unlock(repository)
+    return {"repository": repository, "locked": False}
+
+
 @router.post("/ui/repositories/{repository:path}/delete")
 def ui_delete_repository(
     repository: str,
-    body: UIRepoMutation,
+    body: UIDeleteRepositoryRequest,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
+    if body.confirm_name.strip() != repository:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Confirmation must match repository name exactly: {repository}",
+        )
+    try:
+        assert_repository_unlocked(lock_store, repository)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         storage.delete_repository(repository)
     except FileNotFoundError as exc:
@@ -460,6 +516,11 @@ def ui_delete_tag(
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
 ) -> dict:
     _verify_ui_admin_key(body.app_api_key, settings)
+    lock_store = RepositoryLockStore(settings.repository_locks_file)
+    try:
+        assert_repository_unlocked(lock_store, repository)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     expected = f"{repository}:{tag}"
     if body.confirm_ref.strip() != expected:
         raise HTTPException(

@@ -1,6 +1,7 @@
 {% extends "ui/layout.html" %}
 {% block title %}Repositories — Private OCI Registry{% endblock %}
 {% block content %}
+<div id="registry-modals-root"></div>
 <div class="card">
   <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog — always <code>{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> (the tag you replicated or pushed). Registry API: <code>{{ registry_v2_url }}</code></p>
   <div class="card" style="margin-top:14px;background:#f8fafc;border-color:#e2e8f0;">
@@ -9,9 +10,9 @@
       <li><strong>Create</strong> — empty repository or first <code>docker push</code> / replicate.</li>
       <li><strong>Update</strong> — push or replicate the same tag again (new manifest digest; old blobs stay until GC).</li>
       <li><strong>Retire</strong> — delete individual tags (below) or the whole repository.</li>
-      <li><strong>Reclaim space</strong> — run garbage collection to remove unreferenced blob files.</li>
+      <li><strong>Reclaim</strong> — run garbage collection to remove unreferenced blob files.</li>
     </ol>
-    <p class="hint" style="margin:10px 0 0;">Deleting a repository or tag removes metadata only until GC runs. Shared layers remain while any tag still references them.</p>
+    <p class="hint" style="margin:10px 0 0;">Use the lock icon to protect production repositories from rename and delete. Push and pull are not blocked.</p>
     <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
       <button type="button" class="btn-inline btn-secondary" id="gcDryRunBtn">Preview garbage collection</button>
       <button type="button" class="btn-inline btn-danger" id="gcRunBtn">Run garbage collection</button>
@@ -19,7 +20,7 @@
     </div>
   </div>
   {% if app_api_key_required %}
-  <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
+  <label for="repo_admin_api_key">Admin API key (create / rename / delete / lock)</label>
   <input id="repo_admin_api_key" type="password" autocomplete="off" />
   {% endif %}
   <form id="createRepoForm" class="inline-form" style="margin-top:14px;">
@@ -39,9 +40,10 @@
     </thead>
     <tbody>
       {% for repo in repositories %}
-      <tr data-repo="{{ repo.name }}">
+      <tr data-repo="{{ repo.name }}" data-locked="{{ 'true' if repo.locked else 'false' }}">
         <td>
           <code>{{ repo.name }}</code>
+          {% if repo.locked %}<span class="hint" title="Protected from delete/rename"> · locked</span>{% endif %}
           <div class="hint"><a href="/ui/browser/repositories/{{ repo.name }}">Browse storage</a></div>
         </td>
         <td>
@@ -75,7 +77,7 @@
               <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
               <span class="hint"> · <a href="/repos/{{ repo.name }}/tags/{{ t.name }}#runtime-labels">Edit labels</a></span>
               <button type="button" class="btn-inline btn-danger btn-delete-tag" style="margin-left:6px;font-size:12px;padding:2px 8px;"
-                data-repo="{{ repo.name }}" data-tag="{{ t.name }}">Delete tag</button>
+                data-repo="{{ repo.name }}" data-tag="{{ t.name }}" {% if repo.locked %}disabled title="Repository is locked"{% endif %}>Delete tag</button>
               {% if t.runtime_display %}
               <div class="runtime-meta-line">{{ t.runtime_display }}</div>
               {% if t.runtime_summary.full_version and t.runtime_summary.full_version != t.runtime_display %}
@@ -95,8 +97,17 @@
         </td>
         <td>
           <div class="actions">
-            <button type="button" class="btn-inline btn-secondary btn-rename">Rename</button>
-            <button type="button" class="btn-inline btn-danger btn-delete">Delete</button>
+            <button type="button" class="btn-lock {% if repo.locked %}locked{% endif %} btn-toggle-lock"
+              title="{% if repo.locked %}Unlock to allow rename/delete{% else %}Lock against rename/delete{% endif %}"
+              aria-label="{% if repo.locked %}Unlock repository{% else %}Lock repository{% endif %}">
+              {% if repo.locked %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+              {% else %}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1"/></svg>
+              {% endif %}
+            </button>
+            <button type="button" class="btn-inline btn-secondary btn-rename" {% if repo.locked %}disabled title="Repository is locked"{% endif %}>Rename</button>
+            <button type="button" class="btn-inline btn-danger btn-delete" {% if repo.locked %}disabled title="Repository is locked"{% endif %}>Delete</button>
           </div>
         </td>
       </tr>
@@ -109,6 +120,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script type="module" src="/static/ui/repositories-modals.js"></script>
 <script>
   document.querySelectorAll(".copy-ref-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -127,15 +139,19 @@
     return null;
     {% endif %}
   }
+  window.registryRepoApiKey = repoApiKey;
+  window.registryRepoPathUrl = function repoPathUrl(base, repoName) {
+    return `${base}/${repoName.split("/").map(encodeURIComponent).join("/")}`;
+  };
+  window.registryRepoReload = () => location.assign("/ui/repositories");
   function showRepoStatus(text, isError) {
     const el = document.getElementById("repoStatus");
     el.style.display = "block";
     el.textContent = text;
     el.classList.toggle("error", !!isError);
   }
-  function repoPathUrl(base, repoName) {
-    return `${base}/${repoName.split("/").map(encodeURIComponent).join("/")}`;
-  }
+  window.registryRepoShowStatus = showRepoStatus;
+
   document.getElementById("createRepoForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("new_repo_name").value.trim();
@@ -156,11 +172,11 @@
     btn.addEventListener("click", async () => {
       const row = btn.closest("tr");
       const oldName = row?.dataset.repo;
-      if (!oldName) return;
+      if (!oldName || row?.dataset.locked === "true") return;
       const newName = window.prompt(`Rename repository "${oldName}" to:`, oldName);
       if (!newName || newName.trim() === oldName) return;
       try {
-        const res = await fetch(`${repoPathUrl("/ui/repositories", oldName)}/rename`, {
+        const res = await fetch(`${window.registryRepoPathUrl("/ui/repositories", oldName)}/rename`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ new_name: newName.trim(), app_api_key: repoApiKey() }),
@@ -174,21 +190,31 @@
     });
   });
   document.querySelectorAll(".btn-delete").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("tr");
+      const name = row?.dataset.repo;
+      if (!name || row?.dataset.locked === "true") return;
+      window.RegistryRepositoriesUi?.openDeleteRepository(name);
+    });
+  });
+  document.querySelectorAll(".btn-toggle-lock").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const row = btn.closest("tr");
       const name = row?.dataset.repo;
       if (!name) return;
-      if (!window.confirm(
-        `Delete repository "${name}" and all tag metadata?\n\nBlob files stay on disk until garbage collection.`
-      )) return;
+      const locked = row.dataset.locked === "true";
+      if (locked) {
+        window.RegistryRepositoriesUi?.openUnlockRepository(name);
+        return;
+      }
       try {
-        const res = await fetch(`${repoPathUrl("/ui/repositories", name)}/delete`, {
+        const res = await fetch(`${window.registryRepoPathUrl("/ui/repositories", name)}/lock`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ app_api_key: repoApiKey() }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Delete failed");
+        if (!res.ok) throw new Error(data.detail || "Lock failed");
         location.assign("/ui/repositories");
       } catch (err) {
         showRepoStatus(err.message || String(err), true);
@@ -199,7 +225,7 @@
     btn.addEventListener("click", async () => {
       const repo = btn.dataset.repo;
       const tag = btn.dataset.tag;
-      if (!repo || !tag) return;
+      if (!repo || !tag || btn.disabled) return;
       const expected = `${repo}:${tag}`;
       const typed = window.prompt(
         `Delete tag and stop serving ${expected}?\n\nType exactly: ${expected}`
@@ -210,7 +236,7 @@
       }
       try {
         const res = await fetch(
-          `${repoPathUrl("/ui/repositories", repo)}/tags/${encodeURIComponent(tag)}/delete`,
+          `${window.registryRepoPathUrl("/ui/repositories", repo)}/tags/${encodeURIComponent(tag)}/delete`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

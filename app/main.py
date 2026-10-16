@@ -6,6 +6,8 @@ from typing import Annotated
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from pydantic import BaseModel, Field
 
 from app.audit_http import record_http_failure_audit
@@ -18,6 +20,7 @@ from app.local_storage import LocalRegistryStorage
 from app.repo_rename import registry_host_candidates, rename_repository_with_dependent_metadata
 from app.image_refs import build_client_pull_refs, ensure_version_tag_alias_for_tag, probe_registry_tag
 from app.registry_gc import run_garbage_collection
+from app.repository_locks import RepositoryLockStore, assert_repository_unlocked
 from app.runtime_label_patch import patch_image_tag_runtime_labels
 from app.upload_store import BlobUploadStore
 from app.registry_push import router as registry_push_router
@@ -34,6 +37,14 @@ app = FastAPI(
 app.include_router(registry_v2_router)
 app.include_router(registry_push_router)
 app.include_router(ui_router)
+
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+if _STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+def get_lock_store(settings: Annotated[Settings, Depends(get_settings)]) -> RepositoryLockStore:
+    return RepositoryLockStore(settings.repository_locks_file)
 
 
 @app.exception_handler(HTTPException)
@@ -205,9 +216,14 @@ def rename_repository(
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
     new_name = body.new_name.strip()
+    try:
+        assert_repository_unlocked(lock_store, name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         rename_stats = rename_repository_with_dependent_metadata(
             storage,
@@ -255,13 +271,28 @@ def patch_runtime_labels(
     return result
 
 
+class DeleteRepositoryRequest(BaseModel):
+    confirm_name: str = Field(..., description="Must match repository name exactly")
+
+
 @app.delete("/api/v1/repositories/{name:path}")
 def delete_repository(
     name: str,
+    body: DeleteRepositoryRequest,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
+    if body.confirm_name.strip() != name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"confirm_name must match repository: {name}",
+        )
+    try:
+        assert_repository_unlocked(lock_store, name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         storage.delete_repository(name)
     except FileNotFoundError as exc:
@@ -278,9 +309,14 @@ def delete_repository_tag(
     tag: str,
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+    lock_store: Annotated[RepositoryLockStore, Depends(get_lock_store)],
     _: None = Depends(require_admin_api_key),
 ) -> dict:
     """Remove a tag and manifest revision when no tags reference the digest. Blobs remain until GC."""
+    try:
+        assert_repository_unlocked(lock_store, name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         result = storage.remove_tag(name, tag)
     except FileNotFoundError as exc:

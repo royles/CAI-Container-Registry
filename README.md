@@ -21,6 +21,10 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 
 Registry API manifest delete (`DELETE /v2/{repo}/manifests/{tag}`) requires an `If-Match` header with the current manifest digest (Distribution spec). The UI and management API delete tags without `If-Match` after you type `repository:tag` to confirm.
 
+**Repository lock** — On Repositories, use the lock icon to block rename, tag delete, and repository delete (push/pull still work). Unlock via an in-app dialog that explains the effects. **Delete repository** uses a React confirmation dialog: type the repository name exactly.
+
+Rebuild UI after editing `frontend/`: `cd frontend && npm install && npm run build` (output: `app/static/ui/repositories-modals.js`).
+
 ### Management UI pages
 
 | Page | URL |

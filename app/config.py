@@ -40,6 +40,10 @@ class Settings(BaseSettings):
         default=Path("data/audit_log"),
         validation_alias="AUDIT_LOG_DIR",
     )
+    repository_locks_file: Path = Field(
+        default=Path("data/repository_locks.json"),
+        validation_alias="REPOSITORY_LOCKS_FILE",
+    )
 
     @property
     def local_auth_enabled(self) -> bool:
@@ -52,4 +56,5 @@ def get_settings() -> Settings:
     settings.registry_data_dir.mkdir(parents=True, exist_ok=True)
     settings.import_jobs_dir.mkdir(parents=True, exist_ok=True)
     settings.audit_log_dir.mkdir(parents=True, exist_ok=True)
+    settings.repository_locks_file.parent.mkdir(parents=True, exist_ok=True)
     return settings

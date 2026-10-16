@@ -59,7 +59,22 @@ curl -X POST "https://<host>/api/v1/import/sync" \
 
 ## Using replicated images in CAI
 
-Point runtime/engine pulls at your application URL host (same subdomain as the app) and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
+### Runtime Catalog image field (common mistake)
+
+In **Registry of Docker Image to Upload**, use a **Docker image reference** only:
+
+```text
+r78blo2186uifm7m.ml-dbfc64d1-783.go01-dem.ylcu-atmi.cloudera.site/local-repo:v3
+```
+
+Do **not** use:
+
+- `https://` at the start
+- A browser-style path such as `https://…/local-repo:v3` (that is not the OCI registry protocol)
+
+Cloudera’s validator calls `https://<host>/v2/` and `https://<host>/v2/local-repo/manifests/v3` on the registry host. Add **Site Administration → Runtimes → Docker Credentials** for that host when `LOCAL_REGISTRY_*` auth is enabled. Custom runtimes must be images that still contain Cloudera ML runtime metadata in the image config (replicate from an official Cloudera runtime tag).
+
+Point runtime/engine pulls at your application subdomain as registry host and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
 
 ## Layout
 

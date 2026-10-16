@@ -29,6 +29,13 @@
     </div>
 
     <div class="card">
+      <h2>Cloudera Runtime Catalog — image field</h2>
+      <p class="hint">Paste this in <strong>Registry of Docker Image to Upload</strong>. Do <strong>not</strong> use <code>https://</code> and do <strong>not</strong> use the browser path <code>/{{ repository }}:{{ tag }}</code>.</p>
+      <p><code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
+      <p class="hint">Also add Docker credentials in Site Administration → Runtimes for host <code>{{ registry_host }}</code> if local registry auth is enabled. The image must include Cloudera ML runtime labels in its config (use a replicated Cloudera runtime base image).</p>
+    </div>
+
+    <div class="card">
       <h2>Registry API (how clients access this image)</h2>
       <ul>
         <li>Manifest: <code>{{ manifest_url }}</code></li>

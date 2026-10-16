@@ -176,6 +176,8 @@ def repo_tag_detail(
             "manifest_url": f"{base}/v2/{repository}/manifests/{tag}",
             "tags_list_url": f"{base}/v2/{repository}/tags/list",
             "image_ref": f"{registry_host}/{repository}:{tag}",
+            "runtime_catalog_ref": f"{registry_host}/{repository}:{tag}",
+            "registry_host": registry_host,
         },
     )
 

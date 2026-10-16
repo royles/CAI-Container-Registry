@@ -124,6 +124,13 @@
       {% else %}
       <p class="endpoint-desc"><strong>Registry authentication:</strong> not enabled. Set <code>LOCAL_REGISTRY_USERNAME</code> and <code>LOCAL_REGISTRY_PASSWORD</code> to protect <code>/v2/</code>.</p>
       {% endif %}
+
+      <div class="endpoint">
+        <div class="endpoint-title">Cloudera Runtime Catalog (Registry of Docker Image to Upload)</div>
+        <p class="endpoint-desc">Use a Docker image reference — <strong>no</strong> <code>https://</code>, <strong>no</strong> <code>/repo:tag</code> web path. Pattern:</p>
+        <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>
+        <p class="endpoint-desc">Example: <code>{{ example_image_ref }}</code>. Cloudera validates via <code>GET https://{{ registry_host }}/v2/</code> and manifest under <code>/v2/&lt;repository&gt;/manifests/&lt;tag&gt;</code>.</p>
+      </div>
     </div>
 
     <div class="card">

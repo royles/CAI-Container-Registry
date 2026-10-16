@@ -57,11 +57,12 @@
   .metric-tile .sub { font-size: 11px; color: #8b95a5; margin-top: 4px; }
 
   .overview-actions {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; margin-bottom: 24px;
   }
   .action-card {
-    display: block; text-decoration: none; color: inherit; background: #fff;
-    border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 20px;
+    display: flex; flex-direction: row; align-items: flex-start; gap: 16px;
+    text-decoration: none; color: inherit; background: #fff;
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
@@ -70,14 +71,15 @@
     box-shadow: 0 8px 24px var(--focus-ring);
   }
   .action-icon {
-    width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    margin-bottom: 14px; color: var(--accent);
-    background: var(--accent-muted); border: 1px solid rgba(249, 103, 2, 0.15);
+    flex-shrink: 0; width: 48px; height: 48px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); background: var(--accent-muted); border: 1px solid rgba(249, 103, 2, 0.15);
   }
   .action-icon .cdl-icon { width: 24px; height: 24px; }
-  .action-card h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
-  .action-card p { margin: 0; font-size: 13px; line-height: 1.45; color: #5c6570; }
-  .action-card .go { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--accent); }
+  .action-card-copy { flex: 1; min-width: 0; }
+  .action-card-copy h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a; line-height: 1.25; }
+  .action-card-copy p { margin: 0; font-size: 13px; line-height: 1.45; color: #5c6570; }
+  .action-card-copy .go { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--accent); }
 
   .page-overview .app-shell { min-height: 100vh; height: 100vh; overflow: hidden; }
   .page-overview .main {

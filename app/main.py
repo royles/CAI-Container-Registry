@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -39,6 +39,17 @@ app.include_router(registry_push_router)
 app.include_router(ui_router)
 
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
+_REPOSITORIES_MODALS_JS = _STATIC_DIR / "ui" / "repositories-modals.js"
+
+
+@app.get("/static/ui/repositories-modals.js", include_in_schema=False)
+def repositories_modals_js() -> FileResponse:
+    """Explicit route so the React delete dialog loads when StaticFiles mount is unavailable."""
+    if not _REPOSITORIES_MODALS_JS.is_file():
+        raise HTTPException(status_code=404, detail="UI bundle not built")
+    return FileResponse(_REPOSITORIES_MODALS_JS, media_type="application/javascript")
+
+
 if _STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 

@@ -126,6 +126,12 @@
       {% endif %}
 
       <div class="endpoint">
+        <div class="endpoint-title">Push from Docker (laptop or CI)</div>
+        <code class="endpoint-url">docker login {{ registry_host }}</code>
+        <p class="endpoint-desc">Then <code>docker tag &lt;image&gt; {{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> and <code>docker push</code> the same reference. Uploads use <code>/v2/.../blobs/uploads/</code> on this host.</p>
+      </div>
+
+      <div class="endpoint">
         <div class="endpoint-title">Cloudera Runtime Catalog (Registry of Docker Image to Upload)</div>
         <p class="endpoint-desc">Use a Docker image reference — <strong>no</strong> <code>https://</code>, <strong>no</strong> <code>/repo:tag</code> web path. Pattern:</p>
         <code class="endpoint-url">{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code>

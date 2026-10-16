@@ -8,17 +8,17 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 - Management UI at `/ui` — remote source, credentials, single-tag or all-tags replication
 - JSON API for automation (`/api/v1/import`, `/api/v1/repositories`, …)
 
-## Quick start (local)
+## Quick start (CAI engine / container)
+
+Use the Python interpreter already provided by the CAI session or application engine (no virtualenv).
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 export CDSW_APP_PORT=8090
-python entry.py
+python3 entry.py
 ```
 
-Open [http://localhost:8090/ui](http://localhost:8090/ui).
+Open `http://localhost:${CDSW_APP_PORT}/ui` (or the application subdomain URL when deployed as an Analytical Application).
 
 ## Cloudera AI Application setup
 

@@ -45,12 +45,85 @@
     .status.running, .status.queued { color: #175cd3; }
     #jobStatus { margin-top: 12px; padding: 12px; border-radius: 8px; background: #eef4ff; display: none; }
     .error { background: #fef3f2; color: #b42318; }
+    .api-card { border-left: 4px solid #0b5fff; }
+    .api-card h2 { margin-top: 0; }
+    .endpoint {
+      margin: 14px 0; padding: 12px; background: #f8fafc;
+      border: 1px solid #e3e8ef; border-radius: 8px;
+    }
+    .endpoint-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    .endpoint-url {
+      display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px; word-break: break-all; color: #0f172a;
+    }
+    .endpoint-desc { font-size: 13px; color: #5c6570; margin-top: 6px; }
+    .copy-btn {
+      margin-top: 8px; background: #fff; color: #0b5fff; border: 1px solid #0b5fff;
+      padding: 6px 10px; font-size: 12px;
+    }
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.03em; background: #eef4ff; color: #175cd3; padding: 2px 8px;
+      border-radius: 999px; margin-left: 8px; vertical-align: middle;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>CAI Private Container Registry</h1>
-    <p class="hint">Registry API is served at <code>/v2/</code> on this same application (port <code>CDSW_APP_PORT</code>).</p>
+    <p class="hint">This application serves two interfaces on the same URL: the management console (this page) and the OCI/Docker Registry HTTP API under <code>/v2/</code>.</p>
+
+    <div class="card api-card">
+      <h2>Container registry API <span class="badge">OCI / Docker V2</span></h2>
+      <p class="hint">Use these endpoints for <code>docker pull</code>, <code>crane</code>, <code>skopeo</code>, runtime catalog validation, and automation. All registry data paths live under <code>/v2/</code> on this application host (proxied by Cloudera AI to <code>127.0.0.1:CDSW_APP_PORT</code>).</p>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Registry API base (required prefix for all image operations)</div>
+        <code class="endpoint-url" id="url-v2">{{ registry_v2_url }}</code>
+        <button type="button" class="copy-btn" data-copy="url-v2">Copy URL</button>
+        <p class="endpoint-desc">Ping with <code>GET</code> (returns <code>{}</code>). Docker clients and tools resolve manifests and blobs relative to this base.</p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Catalog</div>
+        <code class="endpoint-url" id="url-catalog">{{ catalog_url }}</code>
+        <button type="button" class="copy-btn" data-copy="url-catalog">Copy URL</button>
+        <p class="endpoint-desc">Lists repository names stored in this project-local registry.</p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Example manifest URL</div>
+        <code class="endpoint-url" id="url-manifest">{{ example_manifest_url }}</code>
+        <button type="button" class="copy-btn" data-copy="url-manifest">Copy URL</button>
+        <p class="endpoint-desc">Pattern: <code>{{ registry_v2_url }}&lt;repository&gt;/manifests/&lt;tag-or-digest&gt;</code></p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Image reference (registry host + repository)</div>
+        <code class="endpoint-url" id="url-image-ref">{{ example_image_ref }}</code>
+        <button type="button" class="copy-btn" data-copy="url-image-ref">Copy reference</button>
+        <p class="endpoint-desc">Use host <code>{{ registry_host }}</code> with clients that pull from this application subdomain. Set <code>PUBLIC_REGISTRY_HOST</code> if you need a different advertised hostname.</p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Management JSON API (replication &amp; metadata)</div>
+        <code class="endpoint-url" id="url-mgmt">{{ management_api_url }}</code>
+        <button type="button" class="copy-btn" data-copy="url-mgmt">Copy URL</button>
+        <p class="endpoint-desc">REST helpers (e.g. <code>POST /api/v1/import</code>). Not the OCI registry protocol — use <code>/v2/</code> for container images.</p>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-title">Health</div>
+        <code class="endpoint-url" id="url-health">{{ health_url }}</code>
+        <button type="button" class="copy-btn" data-copy="url-health">Copy URL</button>
+      </div>
+
+      {% if local_auth_enabled %}
+      <p class="endpoint-desc"><strong>Registry authentication:</strong> HTTP Basic — username <code>{{ local_registry_username }}</code> (password from <code>LOCAL_REGISTRY_PASSWORD</code>). Required for <code>/v2/</code> and read-only catalog API routes when enabled.</p>
+      {% else %}
+      <p class="endpoint-desc"><strong>Registry authentication:</strong> not enabled. Set <code>LOCAL_REGISTRY_USERNAME</code> and <code>LOCAL_REGISTRY_PASSWORD</code> to protect <code>/v2/</code>.</p>
+      {% endif %}
+    </div>
 
     <div class="card">
       <h2>Replicate from a remote repository</h2>
@@ -146,6 +219,18 @@
   </div>
 
   <script>
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const el = document.getElementById(btn.dataset.copy);
+        if (!el) return;
+        navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+          const prev = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(() => { btn.textContent = prev; }, 1500);
+        });
+      });
+    });
+
     const form = document.getElementById("replicateForm");
     const jobStatus = document.getElementById("jobStatus");
     const submitBtn = document.getElementById("submitBtn");

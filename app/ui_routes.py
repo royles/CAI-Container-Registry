@@ -73,6 +73,10 @@ def _render_manage_ui(
     for name in storage.list_repositories():
         repos.append({"name": name, "tags": storage.list_tags(name)})
     jobs = importer.jobs.list_jobs()[:20]
+    base = str(request.base_url).rstrip("/")
+    registry_host = settings.public_registry_host or request.url.netloc
+    example_repo = repos[0]["name"] if repos else "my-team/my-image"
+    example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
     return templates.TemplateResponse(
         request,
         "manage.html",
@@ -81,6 +85,16 @@ def _render_manage_ui(
             "jobs": jobs,
             "data_dir": str(settings.registry_data_dir),
             "app_api_key_required": bool(settings.app_api_key),
+            "app_root_url": f"{base}/",
+            "registry_v2_url": f"{base}/v2/",
+            "catalog_url": f"{base}/v2/_catalog",
+            "health_url": f"{base}/health",
+            "management_api_url": f"{base}/api/v1/",
+            "registry_host": registry_host,
+            "local_auth_enabled": settings.local_auth_enabled,
+            "local_registry_username": settings.local_registry_username,
+            "example_manifest_url": f"{base}/v2/{example_repo}/manifests/{example_tag}",
+            "example_image_ref": f"{registry_host}/{example_repo}:{example_tag}",
         },
     )
 

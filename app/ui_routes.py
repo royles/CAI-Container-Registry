@@ -196,10 +196,28 @@ def manage_ui_replicate(
         "replicate",
         active_nav="replicate",
         page_title="Replicate from remote",
-        page_lead="Import images from Cloudera or another OCI registry, and review the registry activity log.",
+        page_lead="Import images from Cloudera or another OCI registry, and review recent replication jobs.",
         storage=storage,
         settings=settings,
-        activity=_activity_for_ui(settings, limit=50),
+        jobs=importer.jobs.list_jobs()[:20],
+    )
+
+
+@router.get("/ui/audit", response_class=HTMLResponse)
+def manage_ui_audit(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_ui_page(
+        request,
+        "audit",
+        active_nav="audit",
+        page_title="Registry audit",
+        page_lead="Complete audit trail of registry changes on this application.",
+        storage=storage,
+        settings=settings,
+        activity=_activity_for_ui(settings, limit=200),
     )
 
 

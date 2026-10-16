@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -78,7 +78,7 @@ class AuditEvent:
         if self.action == "push":
             return f"Pushed {self.display_target()}"
         if self.action == "pull":
-            return f"Pulled {self.display_target()}"
+            return f"Container pull · {self.display_target()}"
         if self.action == "rename":
             return f"Renamed {self.display_target()}"
         if self.action == "repo_create":
@@ -167,8 +167,26 @@ class RegistryAuditStore:
         repository: str,
         reference: str,
         digest: str,
-    ) -> AuditEvent:
-        tag = reference if not reference.startswith("sha256:") else None
+        *,
+        coalesce_minutes: int = 30,
+    ) -> AuditEvent | None:
+        """Record one logical container pull (tag reference), not each manifest GET."""
+        if _is_digest_reference(reference):
+            return None
+
+        now = datetime.now(timezone.utc)
+        tag = reference
+        for event in self.list_events():
+            if event.action != "pull" or event.repository != repository or event.tag != tag:
+                continue
+            when = _parse_iso(event.finished_at or event.created_at)
+            if when and now - when <= timedelta(minutes=coalesce_minutes):
+                event.finished_at = now.isoformat()
+                event.digest = digest
+                event.message = "Container image pull completed"
+                self.save(event)
+                return event
+
         event = AuditEvent(
             id=str(uuid.uuid4()),
             action="pull",
@@ -176,8 +194,8 @@ class RegistryAuditStore:
             repository=repository,
             tag=tag,
             digest=digest,
-            message=f"Manifest {digest}",
-            finished_at=datetime.now(timezone.utc).isoformat(),
+            message="Container image pull completed",
+            finished_at=now.isoformat(),
         )
         self.save(event)
         return event
@@ -218,6 +236,20 @@ class RegistryAuditStore:
         )
         self.save(event)
         return event
+
+
+def _is_digest_reference(reference: str) -> bool:
+    ref = reference.strip()
+    return ref.startswith("sha256:") or (len(ref) == 64 and all(c in "0123456789abcdef" for c in ref.lower()))
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _job_status(status: str) -> AuditStatus:

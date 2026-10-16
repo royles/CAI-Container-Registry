@@ -1,0 +1,13 @@
+{% extends "ui/layout.html" %}
+{% from "ui/_activity.html" import activity_table %}
+{% block title %}Registry audit — CAI Private Registry{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="hint" style="margin:0 0 16px;">
+    Change history for this registry: push, container pull (by tag, not individual API GETs),
+    replicate, rename, and repository create/delete. Newest events first.
+    Automation can use <code>GET /api/v1/audit/events</code> when <code>APP_API_KEY</code> is set.
+  </p>
+  {{ activity_table(activity, "No audit events recorded yet.") }}
+</div>
+{% endblock %}

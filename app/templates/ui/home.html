@@ -182,9 +182,9 @@
     <p class="hint" style="margin:0 0 12px;">Audit of pushes, pulls, replications, renames, and repository admin changes.</p>
     {{ activity_rows(activity, 8) }}
     {% if activity|length > 8 %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">Full activity log</a></p>
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/audit">Full audit log</a></p>
     {% elif activity %}
-    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">View on replicate page</a></p>
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/audit">Registry audit</a></p>
     {% endif %}
     {% if overview.activity_ok or overview.activity_fail %}
     <p class="hint" style="margin-top:12px;">{{ overview.activity_ok }} succeeded · {{ overview.activity_fail }} failed (recent window)</p>

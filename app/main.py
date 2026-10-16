@@ -116,9 +116,11 @@ def runtime_catalog_diagnostics(
         metadata.get("runtime_summary") if metadata.get("ok") else None,
         storage=storage,
     )
+    version_check = metadata.get("version_check") if isinstance(metadata, dict) else None
     return {
         "image_reference_for_runtime_catalog": pull_refs["client_pull_ref"],
         "runtime_full_version_metadata": pull_refs.get("runtime_full_version"),
+        "runtime_catalog_version_validation": version_check,
         "pull_refs": pull_refs,
         "registry_ping_url": f"https://{host}/v2/",
         "manifest_url": f"https://{host}/v2/{repository}/manifests/{tag}",

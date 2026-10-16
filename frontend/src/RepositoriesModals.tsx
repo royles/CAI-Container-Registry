@@ -215,7 +215,7 @@ function DeleteTagModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          confirm_ref: confirmRef,
+          confirm_ref: typed.trim(),
           app_api_key: window.registryRepoApiKey?.() ?? null,
         }),
       });

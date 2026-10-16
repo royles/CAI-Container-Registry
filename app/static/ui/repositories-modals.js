@@ -5843,7 +5843,7 @@ function Fd({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            confirm_ref: n,
+            confirm_ref: l.trim(),
             app_api_key: ((g = window.registryRepoApiKey) == null ? void 0 : g.call(window)) ?? null
           })
         }), f = await D.json();

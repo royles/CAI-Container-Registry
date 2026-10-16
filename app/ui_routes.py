@@ -477,6 +477,43 @@ def ui_unlock_repository(
     return {"repository": repository, "locked": False}
 
 
+@router.post("/ui/repositories/{repository:path}/tags/{tag}/delete")
+def ui_delete_tag(
+    repository: str,
+    tag: str,
+    body: UIDeleteTagRequest,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
+) -> dict:
+    """Registered before repository delete: {repository:path} is greedy and would swallow /tags/.../delete."""
+    _verify_ui_admin_key(body.app_api_key, settings)
+    lock_store = RepositoryLockStore(settings.repository_locks_file)
+    try:
+        assert_repository_unlocked(lock_store, repository)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    expected = f"{repository}:{tag}"
+    if body.confirm_ref.strip() != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Confirmation must match exactly: {expected}",
+        )
+    try:
+        result = storage.remove_tag(repository, tag)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Tag not found: {expected}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    audit.record_tag_delete(
+        repository,
+        tag=tag,
+        digest=result.get("manifest_digest", ""),
+        message="Tag deleted from UI",
+    )
+    return result
+
+
 @router.post("/ui/repositories/{repository:path}/delete")
 def ui_delete_repository(
     repository: str,
@@ -504,42 +541,6 @@ def ui_delete_repository(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     audit.record_repo_delete(repository)
     return {"deleted": repository}
-
-
-@router.post("/ui/repositories/{repository:path}/tags/{tag}/delete")
-def ui_delete_tag(
-    repository: str,
-    tag: str,
-    body: UIDeleteTagRequest,
-    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    audit: Annotated[RegistryAuditStore, Depends(get_audit)],
-) -> dict:
-    _verify_ui_admin_key(body.app_api_key, settings)
-    lock_store = RepositoryLockStore(settings.repository_locks_file)
-    try:
-        assert_repository_unlocked(lock_store, repository)
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    expected = f"{repository}:{tag}"
-    if body.confirm_ref.strip() != expected:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Confirmation must match exactly: {expected}",
-        )
-    try:
-        result = storage.remove_tag(repository, tag)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=f"Tag not found: {expected}") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    audit.record_tag_delete(
-        repository,
-        tag=tag,
-        digest=result.get("manifest_digest", ""),
-        message="Tag deleted from UI",
-    )
-    return result
 
 
 @router.post("/ui/gc")

@@ -42,7 +42,7 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 _REPOSITORIES_MODALS_JS = _STATIC_DIR / "ui" / "repositories-modals.js"
 
 
-@app.get("/static/ui/repositories-modals.js", include_in_schema=False)
+@app.get("/static/ui/repositories-modals.js", name="repositories_modals_js", include_in_schema=False)
 def repositories_modals_js() -> FileResponse:
     """Explicit route so the React delete dialog loads when StaticFiles mount is unavailable."""
     if not _REPOSITORIES_MODALS_JS.is_file():

@@ -116,17 +116,13 @@ def runtime_catalog_diagnostics(
         metadata.get("runtime_summary") if metadata.get("ok") else None,
         storage=storage,
     )
-    version_tag = str(pull_refs["version_tag"])
-    client_tag = pull_refs["client_pull_ref"].rsplit(":", 1)[-1]
     return {
         "image_reference_for_runtime_catalog": pull_refs["client_pull_ref"],
-        "image_reference_registry_tag": pull_refs["registry_ref"],
+        "runtime_full_version_metadata": pull_refs.get("runtime_full_version"),
         "pull_refs": pull_refs,
         "registry_ping_url": f"https://{host}/v2/",
         "manifest_url": f"https://{host}/v2/{repository}/manifests/{tag}",
-        "manifest_url_for_client_pull": f"https://{host}/v2/{repository}/manifests/{client_tag}",
         "manifest_probe_registry_tag": probe_registry_tag(storage, repository, tag),
-        "manifest_probe_client_tag": probe_registry_tag(storage, repository, client_tag),
         "local_auth_enabled": settings.local_auth_enabled,
         "local_registry_public_read": settings.local_registry_public_read,
         "runtime_catalog_checks": {

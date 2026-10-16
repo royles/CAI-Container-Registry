@@ -8,25 +8,23 @@
   <code>/{{ repository }}:{{ tag }}</code>. Bytes live under <code>{{ data_dir }}/</code>.
 </div>
 <div class="card">
-  <h2 style="margin-top:0;font-size:1.05rem;">Client pull &amp; Runtime Catalog</h2>
-  <p class="hint" style="margin-top:0;">Use this reference for <code>docker pull</code> and Runtime Catalog (no <code>https://</code>):</p>
+  <h2 style="margin-top:0;font-size:1.05rem;">Docker pull &amp; Runtime Catalog</h2>
+  <p class="hint" style="margin-top:0;">Image reference for pull and catalog upload (no <code>https://</code>):</p>
   {% if pull_refs.catalog_warning %}
-  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>Runtime Catalog:</strong> {{ pull_refs.catalog_warning }}</p>
+  <p class="hint" style="color:#b42318;margin:8px 0;"><strong>{{ pull_refs.catalog_warning }}</strong></p>
   {% endif %}
   <p style="margin:8px 0;"><code id="runtime-catalog-ref" class="image-ref">{{ pull_refs.client_pull_ref }}</code>
     <button type="button" class="copy-ref-btn" data-copy-text="{{ pull_refs.client_pull_ref }}">Copy</button></p>
-  {% if pull_refs.version_tag != pull_refs.registry_tag and not pull_refs.version_tag_exists %}
-  <p class="hint"><button type="button" class="btn-inline btn-secondary" id="ensureVersionTagBtn">Create version tag <code>{{ pull_refs.version_tag }}</code></button>
-    (same manifest as <code>{{ pull_refs.registry_tag }}</code>)</p>
+  <p class="hint">Same as <code>docker pull {{ pull_refs.client_pull_ref }}</code>. App shortcut: <code>/{{ repository }}:{{ tag }}</code></p>
+  {% if pull_refs.version_alias_ref and pull_refs.version_tag_exists %}
+  <p class="hint">Optional alias tag (same image): <code>{{ pull_refs.version_alias_ref }}</code></p>
   {% endif %}
-  {% if pull_refs.version_tag != pull_refs.registry_tag %}
-  <p class="hint">Registry tag on disk: <code>{{ pull_refs.registry_tag }}</code> · version tag for clients: <code>{{ pull_refs.version_tag }}</code>
-    (alias created when you save runtime labels). Root shortcuts:
-    <code>/{{ repository }}:{{ pull_refs.version_tag }}</code>,
-    <code>/{{ pull_refs.version_tag }}</code> when unique.</p>
-  {% else %}
-  <p class="hint">Set short/maintenance version and save labels to add a <code>full_version</code> pull tag. Root shortcut: <code>/{{ repository }}:{{ tag }}</code>.</p>
+  {% if pull_refs.runtime_full_version %}
+  <p class="hint">Cloudera <code>full_version</code> in image config (metadata): <code>{{ pull_refs.runtime_full_version }}</code> — use the registry tag above for pull unless you intentionally added an alias tag.</p>
   {% endif %}
+</div>
+<div class="card">
+  <h2 style="margin-top:0;font-size:1.05rem;">Cloudera runtime metadata</h2>
   {% if cloudera_meta.cloudera_labels_missing %}
   <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels.</strong> {{ cloudera_meta.hint }}</p>
   {% elif cloudera_meta.ok %}
@@ -58,11 +56,8 @@
 <div class="card" id="runtime-labels">
   <h2 style="margin-top:0;font-size:1.05rem;">Edit runtime labels</h2>
   <p class="hint" style="margin-top:0;">
-    Updates <code>ML_RUNTIME_*</code> labels and matching <code>Env</code> entries, rewrites config/manifest blobs,
-    and relinks this tag. Multi-arch indexes update every platform manifest.
-    <strong>Runtime Catalog rule:</strong> <code>full_version</code> must be
-    <code>{short_version}.{maintenance_version}</code> (maintenance must be an integer, e.g. <code>1</code>).
-    Save auto-aligns <code>full_version</code> when short and maintenance are set. Use a unique <strong>edition</strong> for custom runtimes.
+    Only needed for custom runtimes or Catalog validation fixes. Updates labels and <code>ML_RUNTIME_*</code> env entries.
+    Pull URL stays <code>{{ pull_refs.client_pull_ref }}</code> unless you add an optional alias tag.
   </p>
   <p class="hint" id="computedFullHint" style="display:none;margin-top:8px;"></p>
   <form id="runtimeLabelsForm">
@@ -102,7 +97,6 @@
     <li>Manifest: <code>{{ manifest_url }}</code></li>
     <li>Tags list: <code>{{ tags_list_url }}</code></li>
     <li>Client pull: <code>{{ pull_refs.client_pull_ref }}</code></li>
-    <li>Manifest by registry tag: <code>{{ manifest_url }}</code></li>
   </ul>
 </div>
 <div class="card">
@@ -159,7 +153,7 @@
     const hint = document.getElementById("computedFullHint");
     if (shortV && maintV && /^[0-9]+$/.test(maintV)) {
       hint.style.display = "block";
-      hint.textContent = `Catalog full_version: ${shortV}.${maintV} — client pull tag /${shortV}.${maintV} or /{{ repository }}:${shortV}.${maintV} after save.`;
+      hint.textContent = `Catalog metadata full_version: ${shortV}.${maintV} (pull tag stays {{ tag }}).`;
     } else {
       hint.style.display = "none";
     }
@@ -190,31 +184,6 @@
       } catch (err) {
         showRuntimeStatus(err.message || String(err), true);
         repairBtn.disabled = false;
-      }
-    });
-  }
-
-  const ensureBtn = document.getElementById("ensureVersionTagBtn");
-  if (ensureBtn) {
-    ensureBtn.addEventListener("click", async () => {
-      ensureBtn.disabled = true;
-      showRuntimeStatus("Creating version tag…", false);
-      try {
-        const payload = {};
-        {% if app_api_key_required %}
-        payload.app_api_key = document.getElementById("runtime_labels_api_key")?.value || "";
-        {% endif %}
-        const res = await fetch(
-          repoTagPathUrl("/ui/repositories", {{ repository|tojson }}, {{ tag|tojson }}, "ensure-version-tag"),
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed");
-        showRuntimeStatus(`Version tag ${data.version_tag_alias || "—"} ready. Reloading…`, false);
-        setTimeout(() => location.reload(), 800);
-      } catch (err) {
-        showRuntimeStatus(err.message || String(err), true);
-        ensureBtn.disabled = false;
       }
     });
   }

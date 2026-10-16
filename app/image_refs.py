@@ -38,10 +38,10 @@ def build_client_pull_refs(
     storage: LocalRegistryStorage | None = None,
 ) -> dict[str, str | bool | None]:
     """
-    Pull references for docker / Runtime Catalog (no https://).
+    Pull references for docker pull and Runtime Catalog (no https://).
 
-    Recommends host/repo:full_version only when that tag exists in the registry
-    (created by saving runtime labels). Otherwise falls back to the registry tag.
+    Primary URL is always the registry tag (host/repo:tag) — what you push, replicate,
+    or pull. Runtime full_version is metadata only unless you also created a matching alias tag.
     """
     host = registry_host.strip().rstrip("/")
     registry_ref = f"{host}/{repository}:{registry_tag}"
@@ -56,35 +56,22 @@ def build_client_pull_refs(
             version_tag_exists = version_tag in tags
 
     if version_tag and version_tag != registry_tag:
-        version_ref = f"{host}/{repository}:{version_tag}"
+        version_alias_ref = f"{host}/{repository}:{version_tag}"
     else:
-        version_ref = registry_ref
+        version_alias_ref = None
 
-    if version_tag and version_tag != registry_tag and version_tag_exists:
-        client_pull_ref = version_ref
-        catalog_ready = True
-        catalog_warning = None
-    elif registry_tag_exists:
-        client_pull_ref = registry_ref
-        catalog_ready = True
-        if version_tag and version_tag != registry_tag and not version_tag_exists:
-            catalog_warning = (
-                f"Version tag '{version_tag}' is not in the registry yet. "
-                f"Save runtime labels on this image (or call ensure-version-tag) before using "
-                f"{version_ref} in Runtime Catalog. Until then use {registry_ref}."
-            )
-        else:
-            catalog_warning = None
-    else:
-        client_pull_ref = registry_ref
-        catalog_ready = False
+    client_pull_ref = registry_ref
+    catalog_ready = registry_tag_exists
+    catalog_warning = None
+    if not registry_tag_exists:
         catalog_warning = f"Registry tag '{registry_tag}' not found in storage."
 
     return {
         "registry_ref": registry_ref,
-        "version_ref": version_ref,
         "client_pull_ref": client_pull_ref,
-        "version_tag": version_tag or registry_tag,
+        "version_alias_ref": version_alias_ref,
+        "runtime_full_version": full,
+        "version_tag": version_tag,
         "registry_tag": registry_tag,
         "version_tag_exists": version_tag_exists,
         "registry_tag_exists": registry_tag_exists,

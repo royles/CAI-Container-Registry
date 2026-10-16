@@ -2,7 +2,7 @@
 {% block title %}Repositories — Private OCI Registry{% endblock %}
 {% block content %}
 <div class="card">
-  <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog. Registry API: <code>{{ registry_v2_url }}</code></p>
+  <p class="hint" style="margin-top:0;">Use the image reference (no <code>https://</code>) for <code>docker pull</code>, <code>docker push</code>, and Runtime Catalog — always <code>{{ registry_host }}/&lt;repository&gt;:&lt;tag&gt;</code> (the tag you replicated or pushed). Registry API: <code>{{ registry_v2_url }}</code></p>
   {% if app_api_key_required %}
   <label for="repo_admin_api_key">Admin API key (create / rename / delete)</label>
   <input id="repo_admin_api_key" type="password" autocomplete="off" />
@@ -37,8 +37,10 @@
                 {% set refs = t.pull_refs %}
                 <code class="image-ref">{{ refs.client_pull_ref }}</code>
                 <button type="button" class="copy-ref-btn" data-copy-text="{{ refs.client_pull_ref }}">Copy</button>
-                {% if refs.version_tag != refs.registry_tag %}
-                <div class="hint runtime-meta-sub">Registry tag <code>{{ refs.registry_tag }}</code> · pull / Runtime Catalog use full version <code>{{ refs.version_tag }}</code></div>
+                {% if refs.catalog_warning %}
+                <div class="hint runtime-meta-sub" style="color:#b42318;">{{ refs.catalog_warning }}</div>
+                {% elif refs.runtime_full_version and refs.runtime_full_version != refs.registry_tag %}
+                <div class="hint runtime-meta-sub">Runtime metadata full version: <code>{{ refs.runtime_full_version }}</code> (not the pull tag)</div>
                 {% endif %}
               </li>
               {% endfor %}
@@ -56,9 +58,6 @@
             {% for t in repo.tag_details %}
             <li class="tag-meta-item">
               <a href="/repos/{{ repo.name }}/tags/{{ t.name }}"><code>{{ t.name }}</code></a>
-              {% if t.pull_refs.version_tag != t.pull_refs.registry_tag %}
-              <span class="hint"> · pull: <code>{{ t.pull_refs.version_tag }}</code></span>
-              {% endif %}
               <span class="hint"> · <a href="/repos/{{ repo.name }}/tags/{{ t.name }}#runtime-labels">Edit labels</a></span>
               {% if t.runtime_display %}
               <div class="runtime-meta-line">{{ t.runtime_display }}</div>

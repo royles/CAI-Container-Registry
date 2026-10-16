@@ -13,10 +13,8 @@ Cloudera AI Workbench project that runs as an **Analytical Application** on `CDS
 | Page | URL |
 |------|-----|
 | Overview | `/ui` |
-| Replicate from a remote repository | `/ui/replicate` |
-| Repository names | `/ui/repositories` |
-| Storage browser | `/ui/browser` (each folder is its own URL, e.g. `/ui/browser/repositories/local-repo/tags`) |
-| Recent replication jobs | `/ui/jobs` |
+| Repositories (pull/push references, storage browse) | `/ui/repositories` — on-disk browse at `/ui/browser/…` |
+| Replicate from remote (includes recent jobs) | `/ui/replicate` |
 | Container registry API | `/ui/api` |
 
 ## Quick start (CAI engine / container)
@@ -44,7 +42,7 @@ python3 entry.py
 
 ## Replicate from Cloudera (UI)
 
-1. Open **Replicate from a remote repository** at `https://<subdomain>.<your-cai-domain>/ui/replicate`
+1. Open **Replicate from remote** at `https://<subdomain>.<your-cai-domain>/ui/replicate`
 2. Enter the remote image, e.g.
 
    `docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-jupyterlab-python3.10-standard:2023.08.2-b8`

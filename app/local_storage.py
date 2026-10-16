@@ -58,6 +58,35 @@ class LocalRegistryStorage:
     def _tag_current_path(self, repo: str, tag: str) -> Path:
         return self._repo_dir(repo) / "_manifests" / "tags" / tag / "current"
 
+    @staticmethod
+    def digest_bytes(data: bytes) -> str:
+        return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+    def put_manifest(self, repo: str, reference: str, manifest_bytes: bytes) -> str:
+        """Store manifest blob and link to tag or digest reference (docker push)."""
+        self.validate_repo_name(repo)
+        manifest_digest = self.digest_bytes(manifest_bytes)
+        self.write_blob(manifest_digest, manifest_bytes)
+        rev = self._manifest_revision_path(repo, manifest_digest)
+        (rev / "link").parent.mkdir(parents=True, exist_ok=True)
+        (rev / "link").write_text(manifest_digest, encoding="utf-8")
+        if reference.startswith("sha256:"):
+            return manifest_digest
+        tag_path = self._tag_current_path(repo, reference)
+        tag_path.parent.mkdir(parents=True, exist_ok=True)
+        tag_path.write_text(manifest_digest, encoding="utf-8")
+        index_path = (
+            self._repo_dir(repo)
+            / "_manifests"
+            / "tags"
+            / "index"
+            / "sha256"
+            / manifest_digest.removeprefix("sha256:")
+        )
+        index_path.parent.mkdir(parents=True, exist_ok=True)
+        index_path.write_text(reference, encoding="utf-8")
+        return manifest_digest
+
     def link_manifest(self, repo: str, tag: str, manifest_digest: str, manifest_bytes: bytes) -> None:
         self.validate_repo_name(repo)
         self.write_blob(manifest_digest, manifest_bytes)

@@ -12,6 +12,7 @@ from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
+from app.registry_push import router as registry_push_router
 from app.registry_v2 import router as registry_v2_router
 from app.remote_client import RemoteRegistryAuth
 from app.ui_routes import router as ui_router
@@ -22,6 +23,7 @@ app = FastAPI(
     version="0.1.0",
 )
 app.include_router(registry_v2_router)
+app.include_router(registry_push_router)
 app.include_router(ui_router)
 
 

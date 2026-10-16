@@ -87,6 +87,20 @@ Temporary debug: set `LOCAL_REGISTRY_PUBLIC_READ=true` on the application to all
 
 Point runtime/engine pulls at your application subdomain as registry host and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
 
+### Push from your laptop (`docker push`)
+
+The registry supports Docker Registry HTTP API v2 **uploads** (POST/PATCH/PUT on `/v2/.../blobs/uploads/` and PUT manifests).
+
+```bash
+docker login r78blo2186uifm7m....cloudera.site
+# username/password = LOCAL_REGISTRY_* when set
+
+docker build -t r78blo2186uifm7m....cloudera.site/local-repo:v4 .
+docker push r78blo2186uifm7m....cloudera.site/local-repo:v4
+```
+
+Use the **application subdomain hostname only** (no `https://` in the image name). The CAI application must be **Running**. For insecure local testing only, Docker may require `"insecure-registries"` — production CAI endpoints should use valid TLS.
+
 ## Layout
 
 - `entry.py` — CAI application entrypoint

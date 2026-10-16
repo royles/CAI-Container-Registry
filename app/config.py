@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     local_registry_password: str | None = Field(
         default=None, validation_alias="LOCAL_REGISTRY_PASSWORD"
     )
+    local_registry_public_read: bool = Field(
+        default=False,
+        validation_alias="LOCAL_REGISTRY_PUBLIC_READ",
+        description="Allow unauthenticated GET/HEAD on /v2/ (useful for Runtime Catalog validate when debugging auth).",
+    )
     app_api_key: str | None = Field(default=None, validation_alias="APP_API_KEY")
     verify_tls: bool = Field(default=True, validation_alias="REGISTRY_VERIFY_TLS")
     ca_bundle: Path | None = Field(default=None, validation_alias="REGISTRY_CA_BUNDLE")

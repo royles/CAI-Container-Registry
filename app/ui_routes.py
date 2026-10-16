@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
@@ -150,8 +151,13 @@ def repo_tag_detail(
     storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
+    cloudera_meta: dict = {}
     try:
         detail = storage.describe_image(repository, tag)
+        try:
+            cloudera_meta = inspect_cloudera_runtime_metadata(storage, repository, tag)
+        except FileNotFoundError:
+            cloudera_meta = {"ok": False, "error": "Image not found"}
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -178,6 +184,8 @@ def repo_tag_detail(
             "image_ref": f"{registry_host}/{repository}:{tag}",
             "runtime_catalog_ref": f"{registry_host}/{repository}:{tag}",
             "registry_host": registry_host,
+            "cloudera_meta": cloudera_meta,
+            "diagnostics_url": f"{base}/api/v1/diagnostics/runtime-catalog/{repository}/{tag}",
         },
     )
 

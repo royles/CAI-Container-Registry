@@ -32,7 +32,12 @@
       <h2>Cloudera Runtime Catalog — image field</h2>
       <p class="hint">Paste this in <strong>Registry of Docker Image to Upload</strong>. Do <strong>not</strong> use <code>https://</code> and do <strong>not</strong> use the browser path <code>/{{ repository }}:{{ tag }}</code>.</p>
       <p><code id="runtime-catalog-ref">{{ runtime_catalog_ref }}</code></p>
-      <p class="hint">Also add Docker credentials in Site Administration → Runtimes for host <code>{{ registry_host }}</code> if local registry auth is enabled. The image must include Cloudera ML runtime labels in its config (use a replicated Cloudera runtime base image).</p>
+      <p class="hint">Also add Docker credentials in Site Administration → Runtimes for server <code>{{ registry_host }}</code> (hostname only, no path) if <code>LOCAL_REGISTRY_*</code> auth is enabled — the same values as the application env. Validate is run by the <strong>runtime-manager</strong> pod in the cluster, not from this browser.</p>
+      {% if cloudera_meta.cloudera_labels_missing %}
+      <p class="hint" style="color:#b42318;"><strong>Missing Cloudera runtime labels</strong> in the image config — Runtime Catalog will reject metadata even if the registry URL is correct. {{ cloudera_meta.hint }}</p>
+      {% elif cloudera_meta.ok %}
+      <p class="hint" style="color:#067647;">Cloudera runtime labels present in local config blob. If Validate still fails, check TLS/credentials and <code>{{ diagnostics_url }}</code>.</p>
+      {% endif %}
     </div>
 
     <div class="card">

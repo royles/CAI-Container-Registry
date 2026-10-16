@@ -76,6 +76,7 @@ async def get_manifest(
         "Content-Type": media_type,
         "Docker-Distribution-Api-Version": "registry/2.0",
     }
+    headers["Content-Length"] = str(len(data))
     if request.method == "HEAD":
         return Response(status_code=200, headers=headers)
     return Response(content=data, media_type=media_type, headers=headers)
@@ -99,6 +100,7 @@ async def get_blob(
         "Docker-Content-Digest": digest,
         "Docker-Distribution-Api-Version": "registry/2.0",
     }
+    headers["Content-Length"] = str(len(data))
     if request.method == "HEAD":
         return Response(status_code=200, headers=headers)
     return Response(content=data, media_type="application/octet-stream", headers=headers)

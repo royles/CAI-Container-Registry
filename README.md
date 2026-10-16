@@ -74,6 +74,17 @@ Do **not** use:
 
 Cloudera’s validator calls `https://<host>/v2/` and `https://<host>/v2/local-repo/manifests/v3` on the registry host. Add **Site Administration → Runtimes → Docker Credentials** for that host when `LOCAL_REGISTRY_*` auth is enabled. Custom runtimes must be images that still contain Cloudera ML runtime metadata in the image config (replicate from an official Cloudera runtime tag).
 
+### Still “Could not fetch the image metadata”?
+
+Validate runs from the **runtime-manager** pod (cluster), not your browser. Work through:
+
+1. **Application running** — subdomain must serve `/v2/` (open `https://<host>/v2/` in a CAI session; expect `{}` or 401 with Basic challenge).
+2. **Docker credentials** — Site Administration → Runtimes → server name exactly `r78blo2186uifm7m….cloudera.site` (no `https://`), username/password matching `LOCAL_REGISTRY_*` if set.
+3. **TLS trust** — runtime-manager must trust the app certificate (Root CA Configuration; known issue if custom CA — see Cloudera ML runtimes release notes for runtime-manager cert mount).
+4. **Cloudera labels** — `GET /api/v1/diagnostics/runtime-catalog/local-repo/v3` on the app (or the repo detail page) checks config labels locally.
+
+Temporary debug: set `LOCAL_REGISTRY_PUBLIC_READ=true` on the application to allow unauthenticated GET/HEAD on `/v2/` (turn off after fixing credentials).
+
 Point runtime/engine pulls at your application subdomain as registry host and path `/v2/`, with the same Basic credentials as `LOCAL_REGISTRY_*` if enabled. For cluster-wide runtime catalog pulls, also register Docker credentials in **Site Administration → Runtimes** and/or create a `regcred` secret in the compute namespace per Cloudera documentation.
 
 ## Layout

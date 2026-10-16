@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.auth import require_admin_api_key, require_local_registry_auth
+from app.cloudera_metadata import inspect_cloudera_runtime_metadata
 from app.config import Settings, get_settings
 from app.importer import ImageImporter, ImportJob
 from app.local_storage import LocalRegistryStorage
@@ -55,6 +56,48 @@ def health(
         "storage": storage.stats(),
         "local_auth_enabled": settings.local_auth_enabled,
         "public_registry_host": settings.public_registry_host,
+    }
+
+
+@app.get("/api/v1/diagnostics/runtime-catalog/{repository:path}/{tag}")
+def runtime_catalog_diagnostics(
+    repository: str,
+    tag: str,
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """
+    Checks local image + Cloudera runtime labels. Runtime Catalog Validate is executed
+    by the cluster runtime-manager pod (TLS, Site Admin docker credentials, /v2/ reachability).
+    """
+    host = settings.public_registry_host or request.url.netloc
+    image_ref = f"{host}/{repository}:{tag}"
+    try:
+        metadata = inspect_cloudera_runtime_metadata(storage, repository, tag)
+    except FileNotFoundError:
+        metadata = {"ok": False, "error": "Image not found in local registry storage"}
+    return {
+        "image_reference_for_runtime_catalog": image_ref,
+        "registry_ping_url": f"https://{host}/v2/",
+        "manifest_url": f"https://{host}/v2/{repository}/manifests/{tag}",
+        "local_auth_enabled": settings.local_auth_enabled,
+        "local_registry_public_read": settings.local_registry_public_read,
+        "runtime_catalog_checks": {
+            "1_local_image_and_labels": metadata,
+            "2_site_administration": (
+                "Add Docker credentials for server "
+                f"'{host}' matching LOCAL_REGISTRY_* when auth is enabled."
+            ),
+            "3_runtime_manager": (
+                "Validate runs from the runtime-manager pod, not your browser. "
+                "It must reach https://<host>/v2/ and trust the TLS certificate. "
+                "Check runtime-manager logs if ping/manifest fetch fails (x509, 401, connection refused)."
+            ),
+            "4_application_running": (
+                "The CAI Application must be Running so /v2/ is served on the subdomain."
+            ),
+        },
     }
 
 

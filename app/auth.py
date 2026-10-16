@@ -27,15 +27,18 @@ def _check_basic(
 
 
 def require_local_registry_auth(
+    request: Request,
     credentials: Annotated[HTTPBasicCredentials | None, Depends(basic_security)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
+    if settings.local_registry_public_read and request.method in ("GET", "HEAD"):
+        return
     if _check_basic(credentials, settings):
         return
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Registry authentication required",
-        headers={"WWW-Authenticate": "Basic"},
+        headers={"WWW-Authenticate": 'Basic realm="CAI Private Registry"'},
     )
 
 

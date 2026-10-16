@@ -1,4 +1,5 @@
 {% extends "ui/layout.html" %}
+{% from "ui/icons.html" import icon_repo, icon_replicate, icon_api %}
 {% block body_class %}page-overview{% endblock %}
 {% block title %}Overview — CAI Private Registry{% endblock %}
 {% block page_h1 %}{% endblock %}
@@ -9,16 +10,17 @@
   .page-overview .main { padding-top: 24px; }
 
   .overview-hero {
-    position: relative; overflow: hidden; border-radius: 16px; padding: 32px 36px; margin-bottom: 24px;
+    position: relative; overflow: hidden; border-radius: 12px; padding: 32px 36px; margin-bottom: 24px;
     color: #fff;
-    background: linear-gradient(135deg, #0b5fff 0%, #4f46e5 48%, #7c3aed 100%);
-    box-shadow: 0 12px 40px rgba(11, 95, 255, 0.25);
+    background: linear-gradient(145deg, #3c3c3c 0%, #2a2a2a 55%, #252525 100%);
+    box-shadow: 0 8px 24px rgba(60, 60, 60, 0.18);
+    border-left: 4px solid var(--accent);
   }
   .overview-hero::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
     background:
-      radial-gradient(circle at 85% 20%, rgba(255,255,255,0.45) 0%, transparent 45%),
-      radial-gradient(circle at 10% 90%, rgba(255,255,255,0.2) 0%, transparent 40%);
+      radial-gradient(circle at 92% 18%, rgba(249, 103, 2, 0.22) 0%, transparent 42%),
+      radial-gradient(circle at 8% 88%, rgba(255, 255, 255, 0.06) 0%, transparent 38%);
   }
   .overview-hero-inner { position: relative; z-index: 1; max-width: 720px; }
   .overview-eyebrow {
@@ -61,16 +63,15 @@
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   }
   .action-card:hover {
-    transform: translateY(-2px); border-color: #c7d7fe;
-    box-shadow: 0 8px 24px rgba(11, 95, 255, 0.12);
+    transform: translateY(-2px); border-color: rgba(249, 103, 2, 0.35);
+    box-shadow: 0 8px 24px var(--focus-ring);
   }
   .action-icon {
-    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
-    font-size: 20px; margin-bottom: 14px;
+    width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px; color: var(--accent);
+    background: var(--accent-muted); border: 1px solid rgba(249, 103, 2, 0.15);
   }
-  .action-icon.repos { background: #eef4ff; }
-  .action-icon.replicate { background: #ecfdf5; }
-  .action-icon.api { background: #fef3c7; }
+  .action-icon .cdl-icon { width: 24px; height: 24px; }
   .action-card h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
   .action-card p { margin: 0; font-size: 13px; line-height: 1.45; color: #5c6570; }
   .action-card .go { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--accent); }
@@ -135,19 +136,19 @@
 
 <div class="overview-actions">
   <a class="action-card" href="/ui/repositories">
-    <div class="action-icon repos" aria-hidden="true">📦</div>
+    <div class="action-icon" aria-hidden="true">{{ icon_repo() }}</div>
     <h2>Repositories</h2>
     <p>Manage names, copy pull/push URLs, and browse on-disk layout.</p>
     <span class="go">Open repositories →</span>
   </a>
   <a class="action-card" href="/ui/replicate">
-    <div class="action-icon replicate" aria-hidden="true">⬇️</div>
+    <div class="action-icon" aria-hidden="true">{{ icon_replicate() }}</div>
     <h2>Replicate from remote</h2>
     <p>Import from Cloudera or any OCI registry and track recent jobs.</p>
     <span class="go">Start replication →</span>
   </a>
   <a class="action-card" href="/ui/api">
-    <div class="action-icon api" aria-hidden="true">🔗</div>
+    <div class="action-icon" aria-hidden="true">{{ icon_api() }}</div>
     <h2>Container registry API</h2>
     <p>Endpoints for docker, Runtime Catalog, and automation.</p>
     <span class="go">View API reference →</span>
@@ -180,7 +181,7 @@
     <div class="job-row">
       <span class="status {{ job.status }}">{{ job.status }}</span>
       → <code>{{ job.target_repo }}:{{ job.target_tag }}</code>
-      <div class="hint">{{ job.message|truncate(80, True, '…') if job.message else '—' }}</div>
+      <div class="hint">{% if job.message %}{{ job.message[:80] }}{% if job.message|length > 80 %}…{% endif %}{% else %}—{% endif %}</div>
     </div>
     {% endfor %}
     <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">All jobs on replicate page</a></p>

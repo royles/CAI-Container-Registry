@@ -30,7 +30,7 @@ Open `http://localhost:${CDSW_APP_PORT}/ui` (or the application subdomain URL wh
 3. **Applications → New Application**
    - Script: `entry.py`
    - Subdomain: e.g. `registry-app`
-   - Bind: listens on `0.0.0.0` and **`CDSW_APP_PORT`**
+   - Bind: listens on **`127.0.0.1`** and **`CDSW_APP_PORT`** (Cloudera proxies the application subdomain to this port)
 4. Test in a session before deploying (Cloudera recommendation).
 
 ## Replicate from Cloudera (UI)

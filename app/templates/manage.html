@@ -48,6 +48,7 @@
       border: 0; background: transparent; cursor: pointer;
       padding: 10px 12px; margin: 2px 0; border-radius: 8px;
       font-size: 14px; font-weight: 500; color: #1a1a1a;
+      text-decoration: none;
     }
     .nav-item:hover { background: #f3f5f8; }
     .nav-item.active {
@@ -167,7 +168,7 @@
     }
     .quick-links { list-style: none; padding: 0; margin: 0; }
     .quick-links li { margin: 10px 0; }
-    .quick-links button.nav-item { font-weight: 500; }
+    .quick-links a.nav-item { font-weight: 500; }
   </style>
 </head>
 <body>
@@ -180,40 +181,54 @@
 
       <div class="nav-group">
         <div class="nav-label">Operations</div>
-        <button type="button" class="nav-item" data-view="home">
+        <a href="/ui" class="nav-item{% if initial_view == 'home' %} active{% endif %}">
           Overview
           <span class="nav-item-desc">Summary and shortcuts</span>
-        </button>
-        <button type="button" class="nav-item" data-view="replicate">
-          Replicate remote
-          <span class="nav-item-desc">Import from Cloudera or other registries</span>
-        </button>
-        <button type="button" class="nav-item" data-view="repositories">
-          Repositories
+        </a>
+        <a href="/ui/replicate" class="nav-item{% if initial_view == 'replicate' %} active{% endif %}">
+          Replicate from a remote repository
+          <span class="nav-item-desc">Import into this private registry</span>
+        </a>
+        <a href="/ui/repositories" class="nav-item{% if initial_view == 'repositories' %} active{% endif %}">
+          Repository names
           <span class="nav-item-desc">Create, rename, delete</span>
-        </button>
-        <button type="button" class="nav-item" data-view="jobs">
-          Replication jobs
-          <span class="nav-item-desc">Recent import activity</span>
-        </button>
+        </a>
+        <a href="/ui/jobs" class="nav-item{% if initial_view == 'jobs' %} active{% endif %}">
+          Recent replication jobs
+          <span class="nav-item-desc">Import activity and status</span>
+        </a>
       </div>
 
       <div class="nav-group">
         <div class="nav-label">Reference</div>
-        <button type="button" class="nav-item" data-view="api">
-          Registry API
+        <a href="/ui/api" class="nav-item{% if initial_view == 'api' %} active{% endif %}">
+          Container registry API
           <span class="nav-item-desc">URLs for docker &amp; automation</span>
-        </button>
+        </a>
       </div>
     </aside>
 
     <main class="main">
       <header class="main-header">
+        {% if initial_view == 'replicate' %}
+        <h1 id="viewTitle">Replicate from a remote repository</h1>
+        <p class="lead" id="viewLead">Import images from Cloudera or another OCI registry into this project-local private registry.</p>
+        {% elif initial_view == 'repositories' %}
+        <h1 id="viewTitle">Repository names</h1>
+        <p class="lead" id="viewLead">Create empty repositories or manage names, tags, and metadata on disk.</p>
+        {% elif initial_view == 'jobs' %}
+        <h1 id="viewTitle">Recent replication jobs</h1>
+        <p class="lead" id="viewLead">Status of recent import jobs started from this console or the JSON API.</p>
+        {% elif initial_view == 'api' %}
+        <h1 id="viewTitle">Container registry API</h1>
+        <p class="lead" id="viewLead">Endpoints and references for docker, Runtime Catalog, and automation.</p>
+        {% else %}
         <h1 id="viewTitle">Overview</h1>
         <p class="lead" id="viewLead">Your project-local container registry on this application URL.</p>
+        {% endif %}
       </header>
 
-      <section class="view-panel active" data-view-panel="home" id="panel-home">
+      <section class="view-panel{% if initial_view == 'home' %} active{% endif %}" data-view-panel="home" id="panel-home">
         <div class="stat-grid">
           <div class="stat">
             <div class="stat-value">{{ repositories|length }}</div>
@@ -227,14 +242,14 @@
         <div class="card">
           <p class="hint" style="margin-top:0;">This application serves the management console and the Docker Registry HTTP API on the same host. Clients use <code>/v2/</code>; you use the operations below to replicate and manage repositories.</p>
           <ul class="quick-links">
-            <li><button type="button" class="nav-item" data-view="replicate">Start a replication →</button></li>
-            <li><button type="button" class="nav-item" data-view="repositories">Manage repository names →</button></li>
-            <li><button type="button" class="nav-item" data-view="api">Copy registry API URLs →</button></li>
+            <li><a href="/ui/replicate" class="nav-item">Replicate from a remote repository →</a></li>
+            <li><a href="/ui/repositories" class="nav-item">Repository names →</a></li>
+            <li><a href="/ui/api" class="nav-item">Container registry API →</a></li>
           </ul>
         </div>
       </section>
 
-      <section class="view-panel" data-view-panel="replicate" id="panel-replicate">
+      <section class="view-panel{% if initial_view == 'replicate' %} active{% endif %}" data-view-panel="replicate" id="panel-replicate">
         <div class="card">
           <form id="replicateForm">
             <label for="source">Remote image or repository</label>
@@ -286,7 +301,7 @@
         </div>
       </section>
 
-      <section class="view-panel" data-view-panel="repositories" id="panel-repositories">
+      <section class="view-panel{% if initial_view == 'repositories' %} active{% endif %}" data-view-panel="repositories" id="panel-repositories">
         <div class="card">
           <p class="hint" style="margin-top:0;">Create empty repositories (e.g. <code>runtimes</code>, <code>models</code>, <code>runtimes/jupyter</code>) before push, or they appear when you push or replicate. Metadata: <code>{{ data_dir }}/docker/registry/v2/repositories/</code></p>
 
@@ -325,7 +340,7 @@
         </div>
       </section>
 
-      <section class="view-panel" data-view-panel="jobs" id="panel-jobs">
+      <section class="view-panel{% if initial_view == 'jobs' %} active{% endif %}" data-view-panel="jobs" id="panel-jobs">
         <div class="card">
           {% if jobs %}
           <table>
@@ -342,12 +357,12 @@
             </tbody>
           </table>
           {% else %}
-          <p class="hint" style="margin-top:0;">No jobs yet. Use <strong>Replicate remote</strong> to import an image.</p>
+          <p class="hint" style="margin-top:0;">No jobs yet. Use <a href="/ui/replicate">Replicate from a remote repository</a> to import an image.</p>
           {% endif %}
         </div>
       </section>
 
-      <section class="view-panel" data-view-panel="api" id="panel-api">
+      <section class="view-panel{% if initial_view == 'api' %} active{% endif %}" data-view-panel="api" id="panel-api">
         <div class="card api-card">
           <p class="hint" style="margin-top:0;">Use these endpoints for <code>docker pull</code>, <code>docker push</code>, Runtime Catalog validation, and automation. <span class="badge">OCI / Docker V2</span></p>
 
@@ -433,67 +448,13 @@
   </div>
 
   <script>
-    const VIEW_META = {
-      home: {
-        title: "Overview",
-        lead: "Your project-local container registry on this application URL.",
-      },
-      replicate: {
-        title: "Replicate remote",
-        lead: "Import images from Cloudera or another OCI registry into this private registry.",
-      },
-      repositories: {
-        title: "Repositories",
-        lead: "Create empty repositories or manage names, tags, and metadata on disk.",
-      },
-      jobs: {
-        title: "Replication jobs",
-        lead: "Status of recent import jobs started from this console or the JSON API.",
-      },
-      api: {
-        title: "Registry API",
-        lead: "Endpoints and references for docker, Runtime Catalog, and automation.",
-      },
+    const UI_PATHS = {
+      home: "/ui",
+      replicate: "/ui/replicate",
+      repositories: "/ui/repositories",
+      jobs: "/ui/jobs",
+      api: "/ui/api",
     };
-
-    const DEFAULT_VIEW = "{{ initial_view }}";
-
-    function validView(id) {
-      return Object.prototype.hasOwnProperty.call(VIEW_META, id);
-    }
-
-    function currentViewFromLocation() {
-      const hash = (location.hash || "").replace(/^#/, "");
-      if (validView(hash)) return hash;
-      const params = new URLSearchParams(location.search);
-      const q = params.get("view");
-      if (q && validView(q)) return q;
-      if (validView(DEFAULT_VIEW)) return DEFAULT_VIEW;
-      return "home";
-    }
-
-    function showView(viewId, { updateHash = true } = {}) {
-      if (!validView(viewId)) viewId = "home";
-      document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-        panel.classList.toggle("active", panel.dataset.viewPanel === viewId);
-      });
-      document.querySelectorAll(".sidebar .nav-item[data-view]").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.view === viewId);
-      });
-      const meta = VIEW_META[viewId];
-      document.getElementById("viewTitle").textContent = meta.title;
-      document.getElementById("viewLead").textContent = meta.lead;
-      if (updateHash && location.hash !== `#${viewId}`) {
-        history.replaceState(null, "", `#${viewId}`);
-      }
-    }
-
-    document.querySelectorAll("[data-view]").forEach((el) => {
-      el.addEventListener("click", () => showView(el.dataset.view));
-    });
-
-    window.addEventListener("hashchange", () => showView(currentViewFromLocation(), { updateHash: false }));
-    showView(currentViewFromLocation(), { updateHash: false });
 
     document.querySelectorAll(".copy-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -518,8 +479,8 @@
     }
 
     function reloadKeepingView(viewId) {
-      location.hash = viewId;
-      location.reload();
+      const path = UI_PATHS[viewId] || UI_PATHS.home;
+      location.assign(path);
     }
 
     async function pollJob(jobId) {
@@ -623,7 +584,6 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       submitBtn.disabled = true;
-      showView("replicate", { updateHash: true });
       showStatus("Starting replication…", false);
       const payload = {
         source: form.source.value.trim(),
@@ -645,7 +605,6 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Replication request failed");
-        showView("jobs", { updateHash: true });
         await pollJob(data.job_id);
       } catch (err) {
         showStatus(err.message || String(err), true);

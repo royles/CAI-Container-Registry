@@ -84,11 +84,16 @@ def _run_replicate(importer: ImageImporter, job_id: str, body: UIReplicateReques
     )
 
 
+_UI_VIEWS = frozenset({"home", "replicate", "repositories", "jobs", "api"})
+
+
 def _render_manage_ui(
     request: Request,
     storage: LocalRegistryStorage,
     importer: ImageImporter,
     settings: Settings,
+    *,
+    initial_view: str | None = None,
 ) -> HTMLResponse:
     repos = []
     for name in storage.list_repositories():
@@ -98,9 +103,9 @@ def _render_manage_ui(
     registry_host = settings.public_registry_host or request.url.netloc
     example_repo = repos[0]["name"] if repos else "my-team/my-image"
     example_tag = repos[0]["tags"][0] if repos and repos[0]["tags"] else "latest"
-    _ui_views = frozenset({"home", "replicate", "repositories", "jobs", "api"})
-    initial_view = request.query_params.get("view", "home")
-    if initial_view not in _ui_views:
+    if initial_view is None:
+        initial_view = request.query_params.get("view", "home")
+    if initial_view not in _UI_VIEWS:
         initial_view = "home"
     return templates.TemplateResponse(
         request,
@@ -134,6 +139,50 @@ def manage_ui(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
     return _render_manage_ui(request, storage, importer, settings)
+
+
+@router.get("/ui/replicate", response_class=HTMLResponse)
+def manage_ui_replicate(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_manage_ui(
+        request, storage, importer, settings, initial_view="replicate"
+    )
+
+
+@router.get("/ui/repositories", response_class=HTMLResponse)
+def manage_ui_repositories(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_manage_ui(
+        request, storage, importer, settings, initial_view="repositories"
+    )
+
+
+@router.get("/ui/jobs", response_class=HTMLResponse)
+def manage_ui_jobs(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_manage_ui(request, storage, importer, settings, initial_view="jobs")
+
+
+@router.get("/ui/api", response_class=HTMLResponse)
+def manage_ui_api(
+    request: Request,
+    storage: Annotated[LocalRegistryStorage, Depends(get_storage)],
+    importer: Annotated[ImageImporter, Depends(get_importer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> HTMLResponse:
+    return _render_manage_ui(request, storage, importer, settings, initial_view="api")
 
 
 @router.post("/ui/replicate")

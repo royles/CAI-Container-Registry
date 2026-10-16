@@ -128,7 +128,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
     <aside class="sidebar" aria-label="Operations">
       <div class="brand">

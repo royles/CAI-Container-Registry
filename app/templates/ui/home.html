@@ -1,22 +1,195 @@
 {% extends "ui/layout.html" %}
+{% block body_class %}page-overview{% endblock %}
 {% block title %}Overview — CAI Private Registry{% endblock %}
+{% block page_h1 %}{% endblock %}
+{% block page_lead %}{% endblock %}
+{% block extra_head %}
+<style>
+  .page-overview .main-header { display: none; }
+  .page-overview .main { padding-top: 24px; }
+
+  .overview-hero {
+    position: relative; overflow: hidden; border-radius: 16px; padding: 32px 36px; margin-bottom: 24px;
+    color: #fff;
+    background: linear-gradient(135deg, #0b5fff 0%, #4f46e5 48%, #7c3aed 100%);
+    box-shadow: 0 12px 40px rgba(11, 95, 255, 0.25);
+  }
+  .overview-hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+    background:
+      radial-gradient(circle at 85% 20%, rgba(255,255,255,0.45) 0%, transparent 45%),
+      radial-gradient(circle at 10% 90%, rgba(255,255,255,0.2) 0%, transparent 40%);
+  }
+  .overview-hero-inner { position: relative; z-index: 1; max-width: 720px; }
+  .overview-eyebrow {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; background: rgba(255,255,255,0.18); padding: 4px 10px; border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .overview-hero h1 { margin: 0 0 10px; font-size: 1.85rem; font-weight: 700; line-height: 1.2; color: #fff; }
+  .overview-hero p { margin: 0 0 18px; font-size: 15px; line-height: 1.55; color: rgba(255,255,255,0.92); }
+  .overview-hero-host {
+    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    background: rgba(0,0,0,0.22); padding: 8px 12px; border-radius: 8px;
+  }
+  .overview-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .overview-pill {
+    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+  }
+  .overview-pill.ok { background: rgba(16, 185, 129, 0.25); border-color: rgba(167, 243, 208, 0.5); }
+
+  .overview-metrics {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px;
+  }
+  .metric-tile {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+  .metric-tile .value { font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; color: #0f172a; }
+  .metric-tile .label { font-size: 13px; color: #5c6570; margin-top: 8px; font-weight: 500; }
+  .metric-tile .sub { font-size: 11px; color: #8b95a5; margin-top: 4px; }
+
+  .overview-actions {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;
+  }
+  .action-card {
+    display: block; text-decoration: none; color: inherit; background: #fff;
+    border: 1px solid var(--border); border-radius: 14px; padding: 22px 22px 20px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .action-card:hover {
+    transform: translateY(-2px); border-color: #c7d7fe;
+    box-shadow: 0 8px 24px rgba(11, 95, 255, 0.12);
+  }
+  .action-icon {
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 14px;
+  }
+  .action-icon.repos { background: #eef4ff; }
+  .action-icon.replicate { background: #ecfdf5; }
+  .action-icon.api { background: #fef3c7; }
+  .action-card h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+  .action-card p { margin: 0; font-size: 13px; line-height: 1.45; color: #5c6570; }
+  .action-card .go { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--accent); }
+
+  .overview-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .overview-split { grid-template-columns: 1fr; } }
+  .overview-split h2 { margin: 0 0 14px; font-size: 1rem; font-weight: 700; }
+  .repo-chip-list { list-style: none; margin: 0; padding: 0; }
+  .repo-chip-list li {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #edf0f3; font-size: 14px;
+  }
+  .repo-chip-list li:last-child { border-bottom: 0; }
+  .job-row { font-size: 13px; padding: 8px 0; border-bottom: 1px solid #edf0f3; }
+  .job-row:last-child { border-bottom: 0; }
+  .empty-state { font-size: 13px; color: #8b95a5; margin: 0; }
+</style>
+{% endblock %}
 {% block content %}
-<div class="stat-grid">
-  <div class="stat">
-    <div class="stat-value">{{ repositories|length }}</div>
-    <div class="stat-label">Repositories</div>
+<section class="overview-hero" aria-labelledby="overview-title">
+  <div class="overview-hero-inner">
+    <span class="overview-eyebrow">Cloudera AI · Private OCI Registry</span>
+    <h1 id="overview-title">Your project-local container registry</h1>
+    <p>Push, pull, and replicate images on this application URL. The management console and Docker Registry API v2 share the same host — clients use <code style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:4px;">/v2/</code>.</p>
+    <div class="overview-hero-host">{{ registry_host }}</div>
+    <div class="overview-pills">
+      <span class="overview-pill ok">Registry API online</span>
+      {% if local_auth_enabled %}
+      <span class="overview-pill">Basic auth enabled</span>
+      {% else %}
+      <span class="overview-pill">Public read optional</span>
+      {% endif %}
+      {% if overview.jobs_active > 0 %}
+      <span class="overview-pill">{{ overview.jobs_active }} job(s) in progress</span>
+      {% endif %}
+    </div>
   </div>
-  <div class="stat">
-    <div class="stat-value">{{ jobs|length }}</div>
-    <div class="stat-label">Recent replication jobs</div>
+</section>
+
+<div class="overview-metrics">
+  <div class="metric-tile">
+    <div class="value">{{ repositories|length }}</div>
+    <div class="label">Repositories</div>
+    <div class="sub">Named image paths</div>
+  </div>
+  <div class="metric-tile">
+    <div class="value">{{ overview.total_tags }}</div>
+    <div class="label">Tags</div>
+    <div class="sub">Pull / push references</div>
+  </div>
+  <div class="metric-tile">
+    <div class="value">{{ overview.storage_stats.blobs }}</div>
+    <div class="label">Content blobs</div>
+    <div class="sub">Shared sha256 store</div>
+  </div>
+  <div class="metric-tile">
+    <div class="value">{% if overview.storage_stats.storage_bytes >= 1073741824 %}{{ (overview.storage_stats.storage_bytes / 1073741824)|round(1) }} GB{% elif overview.storage_stats.storage_bytes >= 1048576 %}{{ (overview.storage_stats.storage_bytes / 1048576)|round(1) }} MB{% else %}{{ (overview.storage_stats.storage_bytes / 1024)|round(0)|int }} KB{% endif %}</div>
+    <div class="label">Storage used</div>
+    <div class="sub">On-disk blob data</div>
   </div>
 </div>
-<div class="card">
-  <p class="hint" style="margin-top:0;">This application serves the management console and the Docker Registry HTTP API on the same host. Clients use <code>/v2/</code>; each task has its own page in the left panel.</p>
-  <ul class="quick-links">
-    <li><a href="/ui/repositories">Repositories →</a></li>
-    <li><a href="/ui/replicate">Replicate from remote →</a></li>
-    <li><a href="/ui/api">Container registry API →</a></li>
-  </ul>
+
+<div class="overview-actions">
+  <a class="action-card" href="/ui/repositories">
+    <div class="action-icon repos" aria-hidden="true">📦</div>
+    <h2>Repositories</h2>
+    <p>Manage names, copy pull/push URLs, and browse on-disk layout.</p>
+    <span class="go">Open repositories →</span>
+  </a>
+  <a class="action-card" href="/ui/replicate">
+    <div class="action-icon replicate" aria-hidden="true">⬇️</div>
+    <h2>Replicate from remote</h2>
+    <p>Import from Cloudera or any OCI registry and track recent jobs.</p>
+    <span class="go">Start replication →</span>
+  </a>
+  <a class="action-card" href="/ui/api">
+    <div class="action-icon api" aria-hidden="true">🔗</div>
+    <h2>Container registry API</h2>
+    <p>Endpoints for docker, Runtime Catalog, and automation.</p>
+    <span class="go">View API reference →</span>
+  </a>
+</div>
+
+<div class="overview-split">
+  <div class="card">
+    <h2>Recent repositories</h2>
+    {% if repositories %}
+    <ul class="repo-chip-list">
+      {% for repo in repositories[:6] %}
+      <li>
+        <span><code>{{ repo.name }}</code></span>
+        <span class="hint">{{ repo.tags|length }} tag{% if repo.tags|length != 1 %}s{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if repositories|length > 6 %}
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/repositories">View all {{ repositories|length }} repositories</a></p>
+    {% endif %}
+    {% else %}
+    <p class="empty-state">No images yet — <a href="/ui/replicate">replicate from remote</a> or push with docker.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Replication activity</h2>
+    {% if jobs %}
+    {% for job in jobs[:5] %}
+    <div class="job-row">
+      <span class="status {{ job.status }}">{{ job.status }}</span>
+      → <code>{{ job.target_repo }}:{{ job.target_tag }}</code>
+      <div class="hint">{{ job.message|truncate(80, True, '…') if job.message else '—' }}</div>
+    </div>
+    {% endfor %}
+    <p class="hint" style="margin:12px 0 0;"><a href="/ui/replicate">All jobs on replicate page</a></p>
+    {% else %}
+    <p class="empty-state">No replication jobs yet.</p>
+    {% endif %}
+    {% if overview.jobs_ok or overview.jobs_fail %}
+    <p class="hint" style="margin-top:12px;">{{ overview.jobs_ok }} succeeded · {{ overview.jobs_fail }} failed (recent window)</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

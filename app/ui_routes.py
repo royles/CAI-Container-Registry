@@ -148,15 +148,29 @@ def manage_ui_home(
     importer: Annotated[ImageImporter, Depends(get_importer)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> HTMLResponse:
+    jobs = importer.jobs.list_jobs()[:20]
+    repos = _list_repos(storage)
+    storage_stats = storage.stats()
+    total_tags = sum(len(r["tags"]) for r in repos)
+    jobs_ok = sum(1 for j in jobs if j.status == "succeeded")
+    jobs_fail = sum(1 for j in jobs if j.status == "failed")
+    jobs_active = sum(1 for j in jobs if j.status in ("running", "queued", "pending"))
     return _render_ui_page(
         request,
         "home",
         active_nav="home",
         page_title="Overview",
-        page_lead="Your project-local container registry on this application URL.",
+        page_lead="",
         storage=storage,
         settings=settings,
-        jobs=importer.jobs.list_jobs()[:20],
+        jobs=jobs,
+        overview={
+            "total_tags": total_tags,
+            "storage_stats": storage_stats,
+            "jobs_ok": jobs_ok,
+            "jobs_fail": jobs_fail,
+            "jobs_active": jobs_active,
+        },
     )
 
 
